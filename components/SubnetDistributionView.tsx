@@ -23,42 +23,6 @@ interface Stakeholder {
   rankColor: string;
 }
 
-const initialStakeholders: Stakeholder[] = [
-  { 
-    rank: 1, name: 'ModernTensor Foundation', address: '5Hh9...2kL', 
-    avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAc0VkbuVAj1TklE56lBP-mFnjJI3O2asvF4uMqCmreqc9yxUF5GVBAlWh6y3ckJ1TMrmdMzqnZXIZBR2wt7fbNcuTHHxBtZHWNpSN0TcceKgUxOKPZxaaOPJ8ekUL-6enYePpWBJh3j7O65BpvVHjUYoTvGZ5K4nxkBfkLkXXIu7C4_oVocE04lVK-hpDQGZnTHq6lk7mhrxJOZPEHAWA9snSxjsBvAGQ3sIfPOyXZKEmIyccUJUkHncOjKyjVvCovLo2p5rlfMg', 
-    avatarFallback: 'MF',
-    stake: '1,450,230.00', share: '45.2%', shareColor: 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10',
-    change: '2.4%', changeDir: 'up', reward: '3,405 M', rankColor: 'text-neon-cyan'
-  },
-  { 
-    rank: 2, name: 'TensorStats Validator', address: '7Jk2...9mP', 
-    avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDK_uN5hYuQZRuYLSpyy-F57p5gaWF5SIdCDq3Hcr7xKtD1ZREnshtPVPVQNdvJjck_ODN-ZJYcVV21YKcSQ_sXy_0dHS4idHRG7SEtY7zMZY5N_RTdUD1RdM6smxyUWpgNByUDMMZX1buLQeCABC7Bn8ifkavN-IAE5cVrWXVhPTR5Wywbr2aj_n6YCqb8cvwQv4gPCJNoo8aT8_Echi6DKbwaIMMZsxQ_H8jxgM95T2TDYiC7ZG_G4HUeelOA9jJ1yIYpC3tgKg', 
-    avatarFallback: 'TS',
-    stake: '892,450.45', share: '27.8%', shareColor: 'text-neon-pink border-neon-pink/30 bg-neon-pink/10',
-    change: '1.1%', changeDir: 'up', reward: '1,890 M', rankColor: 'text-neon-pink'
-  },
-  { 
-    rank: 3, name: 'Neural Interlink', address: '3Xy8...1qR', 
-    avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAp1MPMoT2UNuugWIeP__aSjYtYkXVGvHqamw09VYRht83LxZ9rr3bqNtOxlRmL8moh8dWqqS3lfIT2HJlUcCCXX4yudRveVv55lM41-nW2H-LorpNJ-rP7Co1XAfa1K6McAedpGSSoQy3bIdwrtpzvJfuG-GUN7z1BPSMi01-zVJcspDsEDhNVSjb29C4UxzGo_I9gFtbQe6JmdzFIQw2qVlnrrYYKQ1E4ljpfI0cU-YiZpV24_7sETBTRBjjkbhdZ5gAbLeGFLw', 
-    avatarFallback: 'NI',
-    stake: '450,120.12', share: '14.0%', shareColor: 'text-neon-purple border-neon-purple/30 bg-neon-purple/10',
-    change: '0.0%', changeDir: 'neutral', reward: '950 M', rankColor: 'text-neon-purple'
-  },
-  { 
-    rank: 4, name: 'Sigma Cluster', address: '9Lm4...6vN', 
-    avatarFallback: 'SC',
-    stake: '125,000.80', share: '3.9%', shareColor: 'text-slate-400 border-white/10 bg-slate-800',
-    change: '0.5%', changeDir: 'down', reward: '240 M', rankColor: 'text-slate-500'
-  },
-  { 
-    rank: 5, name: 'DeepMind (Unofficial)', address: '2Kp1...5jD', 
-    avatarFallback: 'DM',
-    stake: '98,150.25', share: '3.1%', shareColor: 'text-slate-400 border-white/10 bg-slate-800',
-    change: '5.2%', changeDir: 'up', reward: '185 M', rankColor: 'text-slate-500'
-  },
-];
-
 const distributionChartData = [
   { name: 'Foundation', value: 45, color: '#00f3ff' },
   { name: 'Validators', value: 30, color: '#ff00ff' },
@@ -84,7 +48,7 @@ const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack,
     rankColor: index === 0 ? 'text-neon-cyan' : index === 1 ? 'text-neon-pink' : index === 2 ? 'text-neon-purple' : 'text-slate-500'
   }));
 
-  const [stakeholders, setStakeholders] = useState<Stakeholder[]>(mappedStakeholders.length > 0 ? mappedStakeholders : initialStakeholders);
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>(mappedStakeholders);
   const [isLoading, setIsLoading] = useState(false);
 
   // Calculate real distribution data for the pie chart
@@ -129,40 +93,7 @@ const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack,
   }
 
   const handleLoadMore = () => {
-    setIsLoading(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-        const nextRank = stakeholders.length + 1;
-        const newStakeholders: Stakeholder[] = [
-            { 
-              rank: nextRank, name: 'Foundry', address: '8Qx2...9aB', 
-              avatarFallback: 'FD',
-              stake: '75,000.00', share: '2.4%', shareColor: 'text-slate-400 border-white/10 bg-slate-800',
-              change: '0.8%', changeDir: 'up', reward: '140 M', rankColor: 'text-slate-600'
-            },
-            { 
-              rank: nextRank + 1, name: 'Rogue Tensor', address: '4Wm9...2zX', 
-              avatarFallback: 'RT',
-              stake: '60,000.00', share: '1.9%', shareColor: 'text-slate-400 border-white/10 bg-slate-800',
-              change: '1.2%', changeDir: 'up', reward: '110 M', rankColor: 'text-slate-600'
-            },
-            { 
-              rank: nextRank + 2, name: 'Datura', address: '6Yn1...4pL', 
-              avatarFallback: 'DA',
-              stake: '45,000.00', share: '1.4%', shareColor: 'text-slate-400 border-white/10 bg-slate-800',
-              change: '0.2%', changeDir: 'down', reward: '85 M', rankColor: 'text-slate-600'
-            },
-            { 
-              rank: nextRank + 3, name: 'Calculus', address: '1Za3...7kM', 
-              avatarFallback: 'CL',
-              stake: '32,500.50', share: '1.0%', shareColor: 'text-slate-400 border-white/10 bg-slate-800',
-              change: '0.0%', changeDir: 'neutral', reward: '62 M', rankColor: 'text-slate-600'
-            }
-        ];
-        setStakeholders(prev => [...prev, ...newStakeholders]);
-        setIsLoading(false);
-    }, 1000);
+    // Logic for loading more nodes would go here if needed.
   };
 
   return (
@@ -283,7 +214,6 @@ const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack,
                                 <div className="relative z-10 h-full flex flex-col justify-between">
                                     <div className="flex justify-between items-start">
                                         <span className="font-bold text-white tracking-wide text-base">{topEmissionsNodes[0].name}</span>
-                                        <span className="material-symbols-outlined text-neon-pink text-lg">trending_up</span>
                                     </div>
                                     <div>
                                         <span className="text-3xl font-bold text-neon-pink drop-shadow-[0_0_5px_#ff00ff]">{topEmissionsNodes[0].percent.toFixed(1)}%</span>

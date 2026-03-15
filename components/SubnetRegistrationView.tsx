@@ -81,8 +81,8 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack,
                       <span className="text-3xl font-black text-white glow-text">{registrationCost.toFixed(2)}</span>
                       <span className="text-sm font-bold text-neon-cyan mb-1.5">MTN</span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-mono text-green-400">
-                      <span className="material-symbols-outlined text-[14px]">trending_down</span> -2.4% vs 24h
+                    <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+                      LIVE DATA
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 pt-4 md:pt-0 md:pl-8">

@@ -155,16 +155,12 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                     <div className="absolute -right-12 -top-12 w-40 h-40 bg-neon-pink/10 rounded-full blur-3xl group-hover:bg-neon-pink/20 transition-colors duration-500"></div>
                     <div className="flex justify-between items-start z-10 relative">
                         <div>
-                            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Global Difficulty</p>
+                            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Global Market Cap</p>
                             <h3 className="text-white text-5xl font-black glow-text-pink font-display">{stats.marketCap}</h3>
                         </div>
                         <div className="p-3 bg-neon-pink/10 rounded-lg border border-neon-pink/20">
                             <span className="material-symbols-outlined text-neon-pink text-3xl">ssid_chart</span>
                         </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-2 text-sm text-green-400 font-mono">
-                        <span className="material-symbols-outlined text-base">trending_up</span>
-                        +5.2%
                     </div>
                 </div>
                 <div className="glass-panel p-6 rounded-xl border-t-2 border-t-neon-purple shadow-[inset_0_10px_20px_-10px_rgba(188,19,254,0.1)] relative overflow-hidden group">
@@ -178,9 +174,11 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                             <span className="material-symbols-outlined text-neon-purple text-3xl">lock</span>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center gap-2 text-sm text-slate-400 font-mono">
-                        <span className="text-white font-bold">82%</span> OF TOTAL SUPPLY
-                    </div>
+                    {data?.network?.total_supply > 0 && (
+                      <div className="mt-4 flex items-center gap-2 text-sm text-slate-400 font-mono">
+                          <span className="text-white font-bold">{((data.network.total_staked / data.network.total_supply) * 100).toFixed(1)}%</span> OF TOTAL SUPPLY
+                      </div>
+                    )}
                 </div>
             </div>
 

@@ -113,19 +113,15 @@ const ContractDetailsView: React.FC<ContractDetailsViewProps> = ({ onBack, contr
                 </button>
               </h1>
               <p className="text-slate-400 text-sm font-mono max-w-2xl flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Contract Name: <span className="text-white font-bold">Quantum Bridge V2.0</span>
+                <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
+                Contract Name: <span className="text-white font-bold">N/A</span>
               </p>
             </div>
           </div>
           <div className="flex gap-4 w-full md:w-auto">
-            <button className="flex-1 md:flex-none group flex items-center justify-center gap-2 px-6 py-3 bg-neon-cyan/10 hover:bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:border-neon-cyan rounded-none clip-path-polygon transition-all shadow-[0_0_15px_rgba(0,243,255,0.1)] hover:shadow-[0_0_25px_rgba(0,243,255,0.3)]">
+            <button className="flex-1 md:flex-none group flex items-center justify-center gap-2 px-6 py-3 bg-white/5 cursor-not-allowed text-slate-500 border border-white/10 rounded-none clip-path-polygon transition-all">
               <span className="material-symbols-outlined text-xl">play_circle</span>
               <span className="font-bold tracking-wider uppercase">Interact</span>
-            </button>
-            <button className="flex-1 md:flex-none group flex items-center justify-center gap-2 px-6 py-3 bg-transparent hover:bg-white/5 text-slate-300 border border-white/20 hover:border-white/50 rounded-none transition-all">
-              <span className="material-symbols-outlined text-xl">integration_instructions</span>
-              <span className="font-medium tracking-wider uppercase">ABI</span>
             </button>
           </div>
         </div>
@@ -136,13 +132,10 @@ const ContractDetailsView: React.FC<ContractDetailsViewProps> = ({ onBack, contr
             <span className="material-symbols-outlined text-lg">dashboard</span> Overview
           </button>
           <button className="px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-500 hover:text-white border-b-2 border-transparent hover:border-white/20 transition-all flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg">code</span> Code <span className="text-[10px] bg-white/10 px-1.5 rounded text-slate-400">Rust</span>
+            <span className="material-symbols-outlined text-lg">code</span> Code
           </button>
           <button className="px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-500 hover:text-white border-b-2 border-transparent hover:border-white/20 transition-all flex items-center gap-2">
             <span className="material-symbols-outlined text-lg">event_list</span> Events
-          </button>
-          <button className="px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-500 hover:text-white border-b-2 border-transparent hover:border-white/20 transition-all flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg">database</span> State
           </button>
         </div>
 
@@ -155,7 +148,7 @@ const ContractDetailsView: React.FC<ContractDetailsViewProps> = ({ onBack, contr
               <span className="material-symbols-outlined text-neon-cyan/70 text-2xl drop-shadow-[0_0_5px_rgba(0,243,255,0.5)]">engineering</span>
             </div>
             <div className="flex flex-col gap-1 mt-2 z-10">
-              <a className="text-white text-lg font-mono font-bold leading-none hover:text-neon-cyan transition-colors truncate" href="#">0x9a2...B1c4</a>
+              <span className="text-white text-lg font-mono font-bold leading-none truncate">N/A</span>
               <span className="text-xs text-slate-500">Deployer Address</span>
             </div>
           </div>
@@ -165,8 +158,7 @@ const ContractDetailsView: React.FC<ContractDetailsViewProps> = ({ onBack, contr
               <span className="material-symbols-outlined text-white/50 text-2xl">deployed_code</span>
             </div>
             <div className="flex items-end gap-3 mt-2 z-10">
-              <p className="text-white text-2xl font-bold leading-none font-mono">#12,540,291</p>
-              <span className="text-xs text-slate-500 mb-1">Oct 24, 2023</span>
+              <p className="text-white text-2xl font-bold leading-none font-mono">N/A</p>
             </div>
           </div>
           <div className="glass-panel flex flex-col gap-2 p-6 rounded-lg neon-border-pink relative overflow-hidden group">
@@ -176,10 +168,7 @@ const ContractDetailsView: React.FC<ContractDetailsViewProps> = ({ onBack, contr
               <span className="material-symbols-outlined text-neon-pink/70 text-2xl drop-shadow-[0_0_5px_rgba(255,0,255,0.5)]">hub</span>
             </div>
             <div className="flex items-end gap-3 mt-2 z-10">
-              <p className="text-white text-3xl font-bold leading-none glow-text-pink">845,201</p>
-              <span className="flex items-center text-green-400 text-xs font-bold bg-green-900/30 border border-green-500/30 px-2 py-1 rounded backdrop-blur-sm">
-                <span className="material-symbols-outlined text-xs mr-0.5">trending_up</span> +24%
-              </span>
+              <p className="text-white text-3xl font-bold leading-none glow-text-pink">N/A</p>
             </div>
           </div>
           <div className="glass-panel flex flex-col gap-2 p-6 rounded-lg neon-border-green relative overflow-hidden group">
@@ -189,8 +178,7 @@ const ContractDetailsView: React.FC<ContractDetailsViewProps> = ({ onBack, contr
               <span className="material-symbols-outlined text-green-500/70 text-2xl drop-shadow-[0_0_5px_rgba(10,255,104,0.5)]">account_balance_wallet</span>
             </div>
             <div className="flex items-end gap-3 mt-2 z-10">
-              <p className="text-white text-3xl font-bold leading-none">2,500 <span className="text-lg text-green-500">τ</span></p>
-              <span className="text-xs text-slate-500 mb-1">Locked Value</span>
+              <p className="text-white text-3xl font-bold leading-none">N/A</p>
             </div>
           </div>
         </div>
