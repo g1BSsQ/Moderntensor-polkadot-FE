@@ -6,21 +6,20 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from web3 import Web3
 
-# Add current directory to path for imports
+# Add lib directory to path for SDK imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+sys.path.insert(0, os.path.join(current_dir, "_lib"))
 
 try:
     from sdk.polkadot import PolkadotClient
 except ImportError as e:
-    # Fallback for different Vercel structures
-    sys.path.insert(0, os.path.join(current_dir, "api"))
+    # Fallback for absolute pathing in some environments
+    sys.path.insert(0, os.path.join(current_dir, "api", "_lib"))
     from sdk.polkadot import PolkadotClient
 
 # Configuration
 RPC_URL = os.environ.get("RPC_URL", "https://services.polkadothub-rpc.com/testnet")
-DEPLOYMENT_PATH = os.path.join(current_dir, "luxtensor", "contracts", "deployments-polkadot.json")
+DEPLOYMENT_PATH = os.path.join(current_dir, "_lib", "luxtensor", "contracts", "deployments-polkadot.json")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 
 class handler(BaseHTTPRequestHandler):
