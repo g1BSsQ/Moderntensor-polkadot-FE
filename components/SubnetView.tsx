@@ -118,7 +118,7 @@ const SubnetView: React.FC<{
           { title: 'Validators', icon: 'verified_user', val: activeSubnet?.unique_validators || sn1.unique_validators, unit: ` / ${activeSubnet?.validators || sn1.validators} Nodes`, color: 'text-neon-cyan', border: 'rgba(0, 243, 255, 0.3)' },
           { title: 'Miners', icon: 'precision_manufacturing', val: sn1.miners, unit: ` / ${activeSubnet?.max_nodes || 100}`, color: 'text-neon-cyan', border: 'rgba(0, 243, 255, 0.3)' },
           { title: 'Subnet Stake', icon: 'account_balance', val: sn1.total_stake.toLocaleString(), unit: 'M', color: 'text-neon-pink', border: 'rgba(255, 0, 255, 0.3)' },
-          { title: 'Epoch Tempo', icon: 'timer', val: sn1.tempo.split(' ')[0], unit: ' blocks', color: 'text-neon-cyan', border: 'rgba(0, 243, 255, 0.3)' },
+          { title: 'Epoch Tempo', icon: 'timer', val: sn1.tempo ? sn1.tempo.split(' ')[0] : '...', unit: ' blocks', color: 'text-neon-cyan', border: 'rgba(0, 243, 255, 0.3)' },
         ].map((card, i) => (
           <SpotlightCard key={i} className="flex flex-col gap-2 p-8" style={{ borderColor: card.border }}>
              <div className="flex justify-between items-start z-10">

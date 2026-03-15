@@ -98,9 +98,9 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
     if (!searchQuery) return bridgeSubnets;
     
     return bridgeSubnets.filter(s => 
-        s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+        (s.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+        (s.id?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (s.subtitle?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );
   }, [data, searchQuery]);
 

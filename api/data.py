@@ -93,14 +93,24 @@ class handler(BaseHTTPRequestHandler):
 
                     subnet_nodes.sort(key=lambda x: x['stake'], reverse=True)
 
+                    # Count unique validators
+                    unique_validator_coldkeys = set()
+                    for v in metagraph.validators:
+                        unique_validator_coldkeys.add(v.coldkey)
+
                     subnets.append({
                         "id": f"SN{i}",
                         "netuid": i,
                         "title": s_info.name if s_info.name else f"Subnet {i}",
+                        "subtitle": "Active Subnet",
+                        "desc": f"Decentralized network for {s_info.name if s_info.name else 'AI Inference'}.",
                         "total_stake": float(Web3.from_wei(metagraph.total_stake, 'ether')),
                         "nodes": subnet_nodes[:50], # Limit for performance
                         "miners": str(len(metagraph.miners)),
                         "validators": str(len(metagraph.validators)),
+                        "unique_validators": str(len(unique_validator_coldkeys)),
+                        "tempo": f"{s_info.tempo} blk",
+                        "max_nodes": s_info.max_nodes,
                         "emission": f"{s_info.emission_percent}%",
                         "registration_cost": min_stake_ether,
                         "difficulty": round(difficulty, 2),
