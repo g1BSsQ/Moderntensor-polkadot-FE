@@ -1,0 +1,25 @@
+{
+    "name": "mdt-contracts",
+    "version": "1.0.0",
+    "description": "ModernTensor ERC20 Token Contracts",
+    "scripts": {
+        "compile": "npx hardhat compile",
+        "test": "npx hardhat test",
+        "deploy:testnet": "npx hardhat run scripts/deploy-polkadot.js --network polkadotTestnet",
+        "deploy:westend": "npx hardhat run scripts/deploy-polkadot.js --network westend",
+        "execute-tge": "npx hardhat run scripts/execute-tge.js --network polkadotTestnet",
+        "verify": "npx hardhat verify"
+    },
+    "dependencies": {
+        "@openzeppelin/contracts": "^5.0.1",
+        "@polkadot/api": "^16.5.4",
+        "@polkadot/keyring": "^14.0.1",
+        "@polkadot/util-crypto": "^14.0.1",
+        "dotenv": "^17.3.1"
+    },
+    "devDependencies": {
+        "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+        "@parity/hardhat-polkadot": "^0.2.7",
+        "hardhat": "^2.19.4"
+    }
+}

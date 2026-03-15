@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ViewState } from './types';
-import HomeView from './components/HomeView';
-import ExplorerView from './components/ExplorerView';
-import SubnetView from './components/SubnetView';
 import SubnetsHub from './components/SubnetsHub';
-import GovernanceView from './components/GovernanceView';
-import ProposalDetailsView from './components/ProposalDetailsView';
-import CreateProposalView from './components/CreateProposalView';
-import TokenomicsView from './components/TokenomicsView';
+import SubnetView from './components/SubnetView';
 import SubnetNodesView from './components/SubnetNodesView';
+import SubnetWeightsView from './components/SubnetWeightsView';
 import SubnetRegistrationView from './components/SubnetRegistrationView';
 import SubnetDistributionView from './components/SubnetDistributionView';
-import SubnetWeightsView from './components/SubnetWeightsView';
+import TokenomicsView from './components/TokenomicsView';
 import ValidatorsView from './components/ValidatorsView';
 import ValidatorDetailView from './components/ValidatorDetailView';
 import AccountView from './components/AccountView';
@@ -21,6 +16,12 @@ import AccountHistoryView from './components/AccountHistoryView';
 import ContractDetailsView from './components/ContractDetailsView';
 import AllTransactionsView from './components/AllTransactionsView';
 import AllBlocksView from './components/AllBlocksView';
+import { DataBridgeProvider } from './context/DataBridgeContext';
+import { WalletProvider, WalletContext } from './context/WalletContext';
+import { useWallet } from './hooks/useWallet';
+import { useDataBridge } from './hooks/useDataBridge';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import AccountSelectorModal from './components/ui/AccountSelectorModal';
 
 // Toast Component
 const ToastNotification = ({ message, type, onClose }: { message: string, type: 'success' | 'info' | 'error', onClose: () => void }) => (
@@ -96,9 +97,9 @@ const BootSequence = ({ onComplete }: { onComplete: () => void }) => {
 };
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<ViewState>(ViewState.HOME);
+  const [currentView, setCurrentView] = useState<ViewState>(ViewState.SUBNETS);
   const [selectedSubnet, setSelectedSubnet] = useState<string | null>(null);
-  const [selectedProposal, setSelectedProposal] = useState<string | null>(null);
+  const [activeSubnetNetuid, setActiveSubnetNetuid] = useState<number>(1);
   const [selectedValidator, setSelectedValidator] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<string | null>(null);
@@ -108,8 +109,19 @@ const App: React.FC = () => {
   // UI State
   const [isBooting, setIsBooting] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  
+  const { data } = useDataBridge();
+  const { 
+    selectedAccount: walletAccount, 
+    accounts: walletAccounts, 
+    isConnecting, 
+    connect: walletConnect, 
+    disconnect: walletDisconnect,
+    setSelectedAccountByAddress: setWalletAccountByAddress,
+    error: walletError 
+  } = useWallet();
+
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<Array<{id: number, message: string, type: 'success' | 'info' | 'error'}>>([]);
   
   // Command Palette State
@@ -118,12 +130,12 @@ const App: React.FC = () => {
   const cmdInputRef = useRef<HTMLInputElement>(null);
 
   // Global Clipboard Handler & Keyboard Shortcuts
-  useEffect(() => {
-    (window as any).copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        addNotification('Copied to clipboard', 'success');
-    };
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    addNotification('Copied to clipboard', 'success');
+  };
 
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
             e.preventDefault();
@@ -155,46 +167,55 @@ const App: React.FC = () => {
       }, 4000);
   };
 
-  const handleConnectWallet = () => {
-      if (walletAddress) {
-          // Disconnect
-          setWalletAddress(null);
+  const handleConnectWallet = async () => {
+      if (walletAccount) {
+          walletDisconnect();
           addNotification('Wallet Disconnected', 'info');
       } else {
-          // Simulate Connect
-          setIsConnecting(true);
-          setTimeout(() => {
-              setWalletAddress('5Hh9...2kL');
-              setIsConnecting(false);
-              addNotification('Wallet Connected Successfully', 'success');
-          }, 1500);
+          try {
+              await walletConnect();
+          } catch (err: any) {
+              addNotification(err.message || 'Failed to connect', 'error');
+          }
       }
   };
 
-  const handleSubnetSelect = (subnetId: string) => {
+  // Trigger account selector modal if multiple accounts found but none selected
+  useEffect(() => {
+    if (!walletAccount && walletAccounts.length > 1 && !isConnecting) {
+      setIsAccountModalOpen(true);
+    }
+    if (walletAccount && isAccountModalOpen) {
+      setIsAccountModalOpen(false);
+      addNotification(`Connected: ${walletAccount.meta.name}`, 'success');
+    }
+  }, [walletAccount, walletAccounts, isConnecting]);
+
+  // Handle wallet errors
+  useEffect(() => {
+    if (walletError) {
+      addNotification(walletError, 'error');
+    }
+  }, [walletError]);
+
+  const handleSubnetSelect = (subnetId: string, netuid?: number) => {
       setSelectedSubnet(subnetId);
+      if (netuid !== undefined) {
+        setActiveSubnetNetuid(netuid);
+      } else {
+        // Parse netuid from subnetId like "SN1", "SN2"
+        const parsed = parseInt(subnetId.replace('SN', ''));
+        if (!isNaN(parsed)) setActiveSubnetNetuid(parsed);
+      }
   };
 
   const handleBackToHub = () => {
       setSelectedSubnet(null);
   };
 
-  const handleProposalSelect = (proposalId: string) => {
-    setSelectedProposal(proposalId);
-  };
-
-  const handleBackToGovernance = () => {
-    setSelectedProposal(null);
-    setCurrentView(ViewState.GOVERNANCE);
-  };
-
-  const handleCreateProposal = () => {
-    if (!walletAddress) {
-        addNotification('Please connect wallet to propose', 'error');
-        return;
-    }
-    setCurrentView(ViewState.CREATE_PROPOSAL);
-  };
+  const handleViewHistory = () => {
+    setCurrentView(ViewState.ACCOUNT_HISTORY);
+  }
 
   const handleValidatorSelect = (validatorId: string) => {
     setSelectedValidator(validatorId);
@@ -222,26 +243,11 @@ const App: React.FC = () => {
     setCurrentView(ViewState.BLOCK_DETAILS);
   }
 
-  const handleViewHistory = () => {
-    setCurrentView(ViewState.ACCOUNT_HISTORY);
-  }
-
-  const handleViewAllTransactions = () => {
-    setCurrentView(ViewState.ALL_TRANSACTIONS);
-  }
-
-  const handleViewAllBlocks = () => {
-    setCurrentView(ViewState.ALL_BLOCKS);
-  }
-
   const handleNavClick = (view: ViewState) => {
     setCurrentView(view);
     setIsMobileMenuOpen(false);
     if (view === ViewState.SUBNETS) {
         setSelectedSubnet(null);
-    }
-    if (view === ViewState.GOVERNANCE) {
-        setSelectedProposal(null);
     }
   };
 
@@ -252,14 +258,10 @@ const App: React.FC = () => {
 
   // Command Palette Options
   const commands = [
-      { category: 'Navigation', label: 'Go to Home', icon: 'home', action: () => handleNavClick(ViewState.HOME) },
-      { category: 'Navigation', label: 'Explore Network', icon: 'travel_explore', action: () => handleNavClick(ViewState.EXPLORER) },
       { category: 'Navigation', label: 'View Subnets', icon: 'hub', action: () => handleNavClick(ViewState.SUBNETS) },
       { category: 'Navigation', label: 'Validators', icon: 'verified_user', action: () => handleNavClick(ViewState.VALIDATORS) },
-      { category: 'Navigation', label: 'Governance', icon: 'how_to_vote', action: () => handleNavClick(ViewState.GOVERNANCE) },
       { category: 'Navigation', label: 'Tokenomics', icon: 'pie_chart', action: () => handleNavClick(ViewState.TOKENOMICS) },
-      { category: 'Action', label: walletAddress ? 'Disconnect Wallet' : 'Connect Wallet', icon: 'account_balance_wallet', action: handleConnectWallet },
-      { category: 'Action', label: 'Create Proposal', icon: 'add_circle', action: handleCreateProposal },
+      { category: 'Action', label: walletAccount ? 'Disconnect Wallet' : 'Connect Wallet', icon: 'account_balance_wallet', action: handleConnectWallet },
   ];
 
   const filteredCommands = commands.filter(cmd => 
@@ -269,59 +271,55 @@ const App: React.FC = () => {
 
   const renderView = () => {
     switch (currentView) {
-      case ViewState.HOME:
-        return <HomeView onViewChange={setCurrentView} onSelectTransaction={handleTransactionSelect} onSelectAccount={handleAccountSelect} onSelectBlock={handleBlockSelect} />;
-      case ViewState.EXPLORER:
-        return <ExplorerView onSelectTransaction={handleTransactionSelect} onSelectAccount={handleAccountSelect} onSelectBlock={handleBlockSelect} onViewAllTransactions={handleViewAllTransactions} onViewAllBlocks={handleViewAllBlocks} />;
       case ViewState.TRANSACTION_DETAILS:
-        return <TransactionDetailsView onBack={() => setCurrentView(ViewState.EXPLORER)} transactionHash={selectedTransaction} onSelectBlock={handleBlockSelect} onSelectAccount={handleAccountSelect} />;
+        return <TransactionDetailsView onBack={() => setCurrentView(ViewState.SUBNETS)} transactionHash={selectedTransaction} onSelectBlock={handleBlockSelect} onSelectAccount={handleAccountSelect} />;
       case ViewState.BLOCK_DETAILS:
-        return <BlockDetailsView onBack={() => setCurrentView(ViewState.EXPLORER)} blockHeight={selectedBlock} onSelectTransaction={handleTransactionSelect} onSelectAccount={handleAccountSelect} />;
+        return <BlockDetailsView onBack={() => setCurrentView(ViewState.SUBNETS)} blockHeight={selectedBlock} onSelectTransaction={handleTransactionSelect} onSelectAccount={handleAccountSelect} />;
       case ViewState.ACCOUNT_HISTORY:
         return <AccountHistoryView onBack={() => setCurrentView(selectedValidator ? ViewState.VALIDATOR_DETAIL : ViewState.ACCOUNT)} accountId={selectedAccount || selectedValidator} onSelectTransaction={handleTransactionSelect} />;
-      case ViewState.ALL_TRANSACTIONS:
-        return <AllTransactionsView onBack={() => setCurrentView(ViewState.EXPLORER)} onSelectTransaction={handleTransactionSelect} onSelectAccount={handleAccountSelect} />;
-      case ViewState.ALL_BLOCKS:
-        return <AllBlocksView onBack={() => setCurrentView(ViewState.EXPLORER)} onSelectBlock={handleBlockSelect} onSelectAccount={handleAccountSelect} />;
       case ViewState.CONTRACT_DETAILS:
-        return <ContractDetailsView onBack={() => setCurrentView(ViewState.EXPLORER)} contractAddress={selectedContract} />;
+        return <ContractDetailsView onBack={() => setCurrentView(ViewState.SUBNETS)} contractAddress={selectedContract} />;
       case ViewState.SUBNETS:
         if (selectedSubnet) {
             return <SubnetView 
               onBack={handleBackToHub} 
               onViewAllNodes={() => setCurrentView(ViewState.SUBNET_NODES)} 
-              onRegister={() => setCurrentView(ViewState.SUBNET_REGISTRATION)}
-              onViewDistribution={() => setCurrentView(ViewState.SUBNET_DISTRIBUTION)}
               onViewWeights={() => setCurrentView(ViewState.SUBNET_WEIGHTS)}
+              onViewRegistration={() => setCurrentView(ViewState.SUBNET_REGISTRATION)}
+              onViewDistribution={() => setCurrentView(ViewState.SUBNET_DISTRIBUTION)}
               onSelectAccount={handleAccountSelect}
+              netuid={activeSubnetNetuid}
             />;
         }
         return <SubnetsHub onSelect={handleSubnetSelect} />;
       case ViewState.SUBNET_NODES:
-        return <SubnetNodesView onBack={() => setCurrentView(ViewState.SUBNETS)} onSelectAccount={handleAccountSelect} />;
-      case ViewState.SUBNET_REGISTRATION:
-        return <SubnetRegistrationView onBack={() => setCurrentView(ViewState.SUBNETS)} />;
-      case ViewState.SUBNET_DISTRIBUTION:
-        return <SubnetDistributionView onBack={() => setCurrentView(ViewState.SUBNETS)} />;
+        return <SubnetNodesView onBack={() => setCurrentView(ViewState.SUBNETS)} onSelectAccount={handleAccountSelect} netuid={activeSubnetNetuid} />;
       case ViewState.SUBNET_WEIGHTS:
-        return <SubnetWeightsView onBack={() => setCurrentView(ViewState.SUBNETS)} />;
+        return <SubnetWeightsView onBack={() => setCurrentView(ViewState.SUBNETS)} netuid={activeSubnetNetuid} />;
+      case ViewState.SUBNET_REGISTRATION:
+        const currentRegSubnet = data?.subnets.find(s => s.netuid === activeSubnetNetuid);
+        return <SubnetRegistrationView onBack={() => setCurrentView(ViewState.SUBNETS)} subnet={currentRegSubnet} />;
+      case ViewState.SUBNET_DISTRIBUTION:
+        const currentDistSubnet = data?.subnets.find(s => s.netuid === activeSubnetNetuid);
+        return <SubnetDistributionView onBack={() => setCurrentView(ViewState.SUBNETS)} subnet={currentDistSubnet} />;
       case ViewState.VALIDATORS:
-        return <ValidatorsView onBack={() => setCurrentView(ViewState.HOME)} onSelectValidator={handleValidatorSelect} />;
+        return <ValidatorsView onBack={() => setCurrentView(ViewState.SUBNETS)} onSelectValidator={handleValidatorSelect} />;
       case ViewState.VALIDATOR_DETAIL:
-        return <ValidatorDetailView onBack={() => setCurrentView(ViewState.VALIDATORS)} onSelectAccount={handleAccountSelect} onViewHistory={handleViewHistory} />;
+        return <ValidatorDetailView onBack={() => setCurrentView(ViewState.VALIDATORS)} onSelectAccount={handleAccountSelect} onViewHistory={handleViewHistory} validatorId={selectedValidator} />;
       case ViewState.ACCOUNT:
-        return <AccountView onBack={() => setCurrentView(ViewState.HOME)} accountId={selectedAccount} onViewHistory={handleViewHistory} />;
-      case ViewState.GOVERNANCE:
-        if (selectedProposal) {
-          return <ProposalDetailsView onBack={handleBackToGovernance} />;
-        }
-        return <GovernanceView onSelectProposal={handleProposalSelect} onCreateProposal={handleCreateProposal} />;
-      case ViewState.CREATE_PROPOSAL:
-        return <CreateProposalView onBack={() => setCurrentView(ViewState.GOVERNANCE)} />;
+        return <AccountView onBack={() => setCurrentView(ViewState.SUBNETS)} accountId={selectedAccount} onSelectTransaction={(hash) => {
+            setSelectedTransaction(hash);
+            setCurrentView(ViewState.TRANSACTION_DETAILS);
+        }} onViewHistory={() => setCurrentView(ViewState.ACCOUNT_HISTORY)} />;
+      case ViewState.ACCOUNT_HISTORY:
+        return <AccountHistoryView onBack={() => setCurrentView(ViewState.ACCOUNT)} accountId={selectedAccount} onSelectTransaction={(hash) => {
+            setSelectedTransaction(hash);
+            setCurrentView(ViewState.TRANSACTION_DETAILS);
+        }} />;
       case ViewState.TOKENOMICS:
         return <TokenomicsView />;
       default:
-        return <HomeView onViewChange={setCurrentView} onSelectTransaction={handleTransactionSelect} onSelectAccount={handleAccountSelect} onSelectBlock={handleBlockSelect} />;
+        return <SubnetsHub onSelect={handleSubnetSelect} />;
     }
   };
 
@@ -393,7 +391,7 @@ const App: React.FC = () => {
             <div className="flex items-center gap-8">
               <div 
                 className="flex items-center gap-3 text-white group cursor-pointer"
-                onClick={() => setCurrentView(ViewState.HOME)}
+                onClick={() => setCurrentView(ViewState.SUBNETS)}
               >
                 <div className="size-8 text-neon-cyan group-hover:drop-shadow-[0_0_15px_rgba(0,243,255,0.8)] transition-all duration-300">
                   <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -409,18 +407,15 @@ const App: React.FC = () => {
 
               <nav className="hidden md:flex items-center gap-6">
                 {[
-                  { id: ViewState.HOME, label: 'Home' },
-                  { id: ViewState.EXPLORER, label: 'Explorer' },
                   { id: ViewState.SUBNETS, label: 'Subnets' },
                   { id: ViewState.VALIDATORS, label: 'Validators' }, 
                   { id: ViewState.TOKENOMICS, label: 'Tokenomics' },
-                  { id: ViewState.GOVERNANCE, label: 'Governance' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
                     className={`text-xs font-semibold tracking-wide transition-all px-3 py-1.5 rounded-md border ${
-                      currentView === item.id || (item.id === ViewState.SUBNETS && (currentView === ViewState.SUBNET_NODES || currentView === ViewState.SUBNET_REGISTRATION || currentView === ViewState.SUBNET_DISTRIBUTION || currentView === ViewState.SUBNET_WEIGHTS)) || (item.id === ViewState.VALIDATORS && (currentView === ViewState.VALIDATOR_DETAIL || currentView === ViewState.ACCOUNT || currentView === ViewState.ACCOUNT_HISTORY)) || (item.id === ViewState.GOVERNANCE && currentView === ViewState.CREATE_PROPOSAL) || (item.id === ViewState.EXPLORER && (currentView === ViewState.TRANSACTION_DETAILS || currentView === ViewState.BLOCK_DETAILS || currentView === ViewState.CONTRACT_DETAILS || currentView === ViewState.ALL_TRANSACTIONS || currentView === ViewState.ALL_BLOCKS))
+                      currentView === item.id || (item.id === ViewState.SUBNETS && (currentView === ViewState.SUBNET_NODES || currentView === ViewState.SUBNET_WEIGHTS)) || (item.id === ViewState.VALIDATORS && (currentView === ViewState.VALIDATOR_DETAIL || currentView === ViewState.ACCOUNT || currentView === ViewState.ACCOUNT_HISTORY)) || (currentView === ViewState.TRANSACTION_DETAILS || currentView === ViewState.BLOCK_DETAILS || currentView === ViewState.CONTRACT_DETAILS)
                         ? 'text-neon-cyan bg-neon-cyan/10 border-neon-cyan/30 shadow-[0_0_10px_rgba(0,243,255,0.2)] font-bold tracking-widest'
                         : 'text-text-secondary border-transparent hover:text-white'
                     }`}
@@ -443,17 +438,17 @@ const App: React.FC = () => {
               <button 
                   onClick={handleConnectWallet}
                   disabled={isConnecting}
-                  className={`hidden md:flex items-center justify-center h-9 px-4 transition-all duration-300 text-xs font-bold rounded-md uppercase tracking-wider ${walletAddress ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30' : 'bg-white text-black hover:bg-neon-cyan hover:text-black hover:shadow-[0_0_15px_rgba(0,243,255,0.6)]'}`}
+                  className={`hidden md:flex items-center justify-center h-9 px-4 transition-all duration-300 text-xs font-bold rounded-md uppercase tracking-wider ${walletAccount ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30' : 'bg-white text-black hover:bg-neon-cyan hover:text-black hover:shadow-[0_0_15px_rgba(0,243,255,0.6)]'}`}
               >
                 {isConnecting ? (
                     <span className="flex items-center gap-2">
                         <span className="size-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                         Connecting...
                     </span>
-                ) : walletAddress ? (
+                ) : walletAccount ? (
                     <span className="flex items-center gap-2">
                         <span className="size-2 bg-green-500 rounded-full animate-pulse"></span>
-                        {walletAddress}
+                        {walletAccount.address.slice(0, 5)}...{walletAccount.address.slice(-3)}
                     </span>
                 ) : 'Connect Wallet'}
               </button>
@@ -480,12 +475,9 @@ const App: React.FC = () => {
                   </div>
                   <nav className="flex flex-col gap-2">
                       {[
-                          { id: ViewState.HOME, label: 'Home', icon: 'home' },
-                          { id: ViewState.EXPLORER, label: 'Explorer', icon: 'travel_explore' },
                           { id: ViewState.SUBNETS, label: 'Subnets', icon: 'hub' },
                           { id: ViewState.VALIDATORS, label: 'Validators', icon: 'verified_user' }, 
                           { id: ViewState.TOKENOMICS, label: 'Tokenomics', icon: 'pie_chart' },
-                          { id: ViewState.GOVERNANCE, label: 'Governance', icon: 'how_to_vote' },
                       ].map((item) => (
                           <button
                               key={item.id}
@@ -512,7 +504,7 @@ const App: React.FC = () => {
                           onClick={handleConnectWallet}
                           className="w-full h-12 flex items-center justify-center bg-white text-black hover:bg-neon-cyan transition-colors font-bold uppercase tracking-wider rounded-lg"
                       >
-                          {walletAddress ? walletAddress : 'Connect Wallet'}
+                          {walletAccount ? `${walletAccount.address.slice(0, 5)}...${walletAccount.address.slice(-3)}` : 'Connect Wallet'}
                       </button>
                   </div>
               </div>
@@ -540,8 +532,25 @@ const App: React.FC = () => {
         </footer>
       </div>
     )}
+    {isAccountModalOpen && (
+      <AccountSelectorModal 
+        accounts={walletAccounts} 
+        onSelect={(addr) => setWalletAccountByAddress(addr)}
+        onClose={() => setIsAccountModalOpen(false)}
+      />
+    )}
     </>
   );
 };
 
-export default App;
+const AppWrapper: React.FC = () => (
+  <ErrorBoundary>
+    <DataBridgeProvider>
+      <WalletProvider>
+        <App />
+      </WalletProvider>
+    </DataBridgeProvider>
+  </ErrorBoundary>
+);
+
+export default AppWrapper;

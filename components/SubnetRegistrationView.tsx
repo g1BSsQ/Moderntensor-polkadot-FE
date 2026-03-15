@@ -1,15 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { BridgeSubnet } from '../types';
+import { useDataBridge } from '../hooks/useDataBridge';
+import { useWallet } from '../hooks/useWallet';
 
 interface SubnetRegistrationViewProps {
   onBack: () => void;
+  subnet?: BridgeSubnet;
 }
 
 const costData = [
   { val: 180 }, { val: 175 }, { val: 185 }, { val: 190 }, { val: 182 }, { val: 195 }, { val: 200.5 }
 ];
 
-const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack }) => {
+const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack, subnet }) => {
+  const { data } = useDataBridge();
+  const { selectedAccount: walletAccount } = useWallet();
+
+  // Fallback to mock if subnet not provided (shouldn't happen in production)
+  const registrationCost = subnet?.registration_cost ?? 200.50;
+  const difficulty = subnet?.difficulty ?? 14.5;
+  const burnRate = subnet?.burn_rate ?? 5.2;
+
+  // Prerequisite checks based on real data
+  const userAccount = walletAccount ? data?.accounts[walletAccount.address] : null;
+  const hasMinBalance = userAccount ? userAccount.balance >= registrationCost : false;
+  const isStaked = userAccount ? userAccount.staked > 0 : false;
   return (
     <div className="flex justify-center py-8 px-4 lg:px-12 relative z-10 w-full min-h-screen">
       <div className="w-full max-w-[1400px] flex flex-col gap-8">
@@ -19,7 +35,9 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack 
           <span className="material-symbols-outlined text-xs">chevron_right</span>
           <span className="hover:text-neon-cyan transition-colors cursor-pointer" onClick={onBack}>SUBNETS</span>
           <span className="material-symbols-outlined text-xs">chevron_right</span>
-          <span className="hover:text-neon-cyan transition-colors cursor-pointer" onClick={onBack}>SN1: TEXT PROMPTING</span>
+          <span className="hover:text-neon-cyan transition-colors cursor-pointer" onClick={onBack}>
+            {subnet ? `${subnet.id}: ${subnet.title.toUpperCase()}` : 'SN1: TEXT PROMPTING'}
+          </span>
           <span className="material-symbols-outlined text-xs">chevron_right</span>
           <span className="text-neon-cyan drop-shadow-[0_0_5px_rgba(0,243,255,0.5)]">REGISTRATION</span>
         </div>
@@ -30,7 +48,9 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack 
           <div className="absolute bottom-0 right-0 w-32 h-[1px] bg-gradient-to-l from-neon-pink to-transparent"></div>
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-4">
-              <h1 className="text-white text-4xl lg:text-5xl font-black leading-tight tracking-tight uppercase glitch-effect" data-text="Subnet Registration">Subnet Registration</h1>
+              <h1 className="text-white text-4xl lg:text-5xl font-black leading-tight tracking-tight uppercase glitch-effect" data-text={subnet ? `${subnet.title} Registration` : "Subnet Registration"}>
+                {subnet ? `${subnet.title} Registration` : "Subnet Registration"}
+              </h1>
               <span className="px-3 py-1 rounded text-xs font-bold bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/40 uppercase tracking-widest shadow-[0_0_10px_rgba(0,243,255,0.2)]">
                 <span className="animate-pulse mr-1">●</span> Open
               </span>
@@ -58,7 +78,7 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack 
                   <div className="flex flex-col gap-2 pt-4 md:pt-0">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Registration Cost</span>
                     <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black text-white glow-text">200.50</span>
+                      <span className="text-3xl font-black text-white glow-text">{registrationCost.toFixed(2)}</span>
                       <span className="text-sm font-bold text-neon-cyan mb-1.5">MTN</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs font-mono text-green-400">
@@ -68,17 +88,20 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack 
                   <div className="flex flex-col gap-2 pt-4 md:pt-0 md:pl-8">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Difficulty</span>
                     <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black text-white">14.5</span>
+                      <span className="text-3xl font-black text-white">{difficulty.toFixed(1)}</span>
                       <span className="text-sm font-bold text-neon-pink mb-1.5">T</span>
                     </div>
                     <div className="w-full bg-slate-800 h-1 rounded-full mt-2 overflow-hidden">
-                      <div className="bg-gradient-to-r from-neon-pink to-purple-600 h-full w-[75%] cyber-progress-pink"></div>
+                      <div 
+                        className="bg-gradient-to-r from-neon-pink to-purple-600 h-full cyber-progress-pink transition-all duration-1000" 
+                        style={{ width: `${Math.min(100, (difficulty / 20) * 100)}%` }}
+                      ></div>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 pt-4 md:pt-0 md:pl-8">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Burn Rate</span>
                     <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black text-white">5.2</span>
+                      <span className="text-3xl font-black text-white">{burnRate.toFixed(1)}</span>
                       <span className="text-sm font-bold text-neon-purple mb-1.5">MTN/Block</span>
                     </div>
                     <span className="text-xs text-slate-500">Recycling to pool</span>
@@ -165,12 +188,16 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack 
                     </div>
                   </li>
                   <li className="flex items-start gap-3 group">
-                    <div className="mt-0.5 rounded-full bg-neon-cyan/20 p-0.5 text-neon-cyan ring-1 ring-neon-cyan/50 animate-pulse">
-                      <span className="material-symbols-outlined text-sm font-bold">sync</span>
+                    <div className={`mt-0.5 rounded-full p-0.5 ring-1 ${hasMinBalance ? 'bg-green-500/20 text-green-400 ring-green-500/50' : 'bg-red-500/20 text-red-400 ring-red-500/50'}`}>
+                      <span className="material-symbols-outlined text-sm font-bold">{hasMinBalance ? 'check' : 'close'}</span>
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-slate-200">Balance Check</p>
-                      <p className="text-xs text-slate-500">Verifying MTN holdings...</p>
+                      <p className="text-xs text-slate-500">
+                        {userAccount 
+                          ? `${userAccount.balance.toFixed(2)} MTN / ${registrationCost.toFixed(2)} Required` 
+                          : 'Connect wallet to check balance'}
+                      </p>
                     </div>
                   </li>
                   <li className="flex items-start gap-3 group opacity-60">
@@ -194,7 +221,7 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack 
                 </ul>
               </div>
             </div>
-            
+
             <div className="glass-panel p-6 rounded-xl border-l-2 border-l-neon-purple relative overflow-hidden">
               <div className="absolute -right-6 -bottom-6 text-neon-purple/10">
                 <span className="material-symbols-outlined text-9xl">help</span>
@@ -205,7 +232,7 @@ const SubnetRegistrationView: React.FC<SubnetRegistrationViewProps> = ({ onBack 
                 Get Tokens <span className="material-symbols-outlined text-sm">open_in_new</span>
               </button>
             </div>
-            
+
             <div className="p-6 rounded-xl border border-dashed border-slate-700 hover:border-neon-cyan/50 transition-colors group cursor-pointer text-center">
               <span className="material-symbols-outlined text-slate-500 group-hover:text-neon-cyan text-3xl mb-2 transition-colors">menu_book</span>
               <h4 className="text-slate-300 font-bold text-sm group-hover:text-white transition-colors">Read Registration Guide</h4>

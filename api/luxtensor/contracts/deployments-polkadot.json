@@ -1,0 +1,15 @@
+{
+  "network": "polkadot_hub_testnet",
+  "chainId": "420420417",
+  "rpc": "https://services.polkadothub-rpc.com/testnet",
+  "deployer": "0x54C375b935344fC3c16E5e83F444DB54dE0E6eB9",
+  "timestamp": "2026-03-08T02:14:59.533Z",
+  "contracts": {
+    "MDTToken": "0x5aC2455272378Be57d985a156C638f0E35EE61f4",
+    "MDTVesting": "0x482ec97FBc840bFD10bA37eA76aFD285394B5A66",
+    "MDTStaking": "0x8c4E7D144783315E8783aE7c562fB19dD4Ad22F8",
+    "ZkMLVerifier": "0x8C46Cc7d759AAB0158770bfD8c8BB4681ae03696",
+    "AIOracle": "0x0699A9a79f9007C523bB8AceB80870aB6cbdd052",
+    "SubnetRegistry": "0xE11F3F86B69578cAF3Db5Be80111B8484c8B6115"
+  }
+}

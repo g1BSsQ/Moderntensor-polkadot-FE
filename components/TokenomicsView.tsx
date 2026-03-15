@@ -1,15 +1,50 @@
 import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-
-const data = [
-  { name: 'Circulating', value: 67, color: '#00f3ff' },
-  { name: 'Locked', value: 33, color: '#1f293a' },
-];
+import { useDataBridge } from '../hooks/useDataBridge';
 
 const TokenomicsView: React.FC = () => {
+  const { data: bridgeData, isLoading } = useDataBridge();
   const [stakeAmount, setStakeAmount] = useState<number>(1000);
-  const apy = 0.184; // 18.4%
-  const price = 423.50; // MTN Price
+  
+  const { apy, price } = useMemo(() => {
+    // Collect average APY from validators if available
+    const avgApy = bridgeData?.validators?.length 
+        ? bridgeData.validators.reduce((acc, v) => acc + parseFloat(v.apy), 0) / bridgeData.validators.length / 100
+        : 0.182;
+    
+    // Price from market cap / supply
+    const currentPrice = bridgeData?.network?.market_cap && bridgeData?.network?.total_supply
+        ? bridgeData.network.market_cap / bridgeData.network.total_supply
+        : 423.50;
+        
+    return { apy: avgApy, price: currentPrice };
+  }, [bridgeData]);
+
+  const supplyData = useMemo(() => {
+    if (!bridgeData) return [
+      { name: 'Circulating', value: 67, color: '#00f3ff' },
+      { name: 'Locked', value: 33, color: '#1f293a' },
+    ];
+    
+    const circulating = (bridgeData.network.total_supply || 14204591) / 1000000;
+    const locked = 21.0 - circulating;
+    return [
+      { name: 'Circulating', value: circulating, color: '#00f3ff' },
+      { name: 'Locked', value: locked, color: '#1f293a' },
+    ];
+  }, [bridgeData]);
+
+  const stats = useMemo(() => {
+    return {
+      block: bridgeData?.network?.block || 45102,
+      marketCap: bridgeData?.network?.market_cap && bridgeData.network.market_cap > 0 
+        ? `$${(bridgeData.network.market_cap / 1_000_000_000).toFixed(1)}B` 
+        : 'N/A',
+      circulating: bridgeData?.network?.total_supply && bridgeData.network.total_supply > 0
+        ? `${(bridgeData.network.total_supply / 1_000_000).toFixed(1)}M`
+        : 'N/A'
+    };
+  }, [bridgeData]);
 
   const dailyOutput = useMemo(() => (stakeAmount * apy) / 365, [stakeAmount]);
   const monthlyOutput = useMemo(() => (stakeAmount * apy) / 12, [stakeAmount]);
@@ -44,7 +79,7 @@ const TokenomicsView: React.FC = () => {
                <span className="size-2 rounded-full bg-neon-green animate-pulse shadow-[0_0_8px_rgba(0,255,157,0.8)]"></span> Network Active
             </span>
             <span className="px-4 py-1.5 bg-black/50 text-neon-cyan font-mono text-xs border border-neon-cyan/30 flex items-center shadow-[inset_0_0_10px_rgba(0,243,255,0.1)] rounded">
-               BLOCK: #45,102
+               BLOCK: #{stats.block.toLocaleString()}
             </span>
          </div>
       </div>
@@ -61,7 +96,7 @@ const TokenomicsView: React.FC = () => {
                   
                   <PieChart width={288} height={288}>
                     <Pie
-                      data={data}
+                      data={supplyData}
                       cx="50%"
                       cy="50%"
                       innerRadius={100}
@@ -72,15 +107,15 @@ const TokenomicsView: React.FC = () => {
                       dataKey="value"
                       stroke="none"
                     >
-                      {data.map((entry, index) => (
+                      {supplyData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                       ))}
                     </Pie>
                   </PieChart>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                      <span className="text-text-secondary text-xs font-mono uppercase tracking-widest mb-1">Circulating</span>
-                     <span className="text-5xl font-display font-bold text-white neon-text">14.2M</span>
-                     <span className="text-neon-cyan text-lg font-bold mt-1 drop-shadow-[0_0_5px_rgba(0,243,255,0.8)]">67%</span>
+                     <span className="text-5xl font-display font-bold text-white neon-text">{stats.circulating}</span>
+                     <span className="text-neon-cyan text-lg font-bold mt-1 drop-shadow-[0_0_5px_rgba(0,243,255,0.8)]">{((supplyData[0].value / 21) * 100).toFixed(0)}%</span>
                   </div>
                </div>
                
@@ -88,14 +123,14 @@ const TokenomicsView: React.FC = () => {
                   <div className="relative pl-4 border-l-2 border-neon-cyan">
                      <div className="absolute top-0 left-[-5px] size-2 bg-neon-cyan shadow-[0_0_10px_#00f3ff]"></div>
                      <h4 className="text-text-secondary text-xs uppercase tracking-widest mb-1 font-mono">Circulating Supply</h4>
-                     <p className="text-3xl font-display font-bold text-white tracking-tight">14,204,591 <span className="text-sm font-normal text-neon-cyan align-top mt-1 inline-block">MTN</span></p>
-                     <p className="text-xs text-text-secondary mt-1 font-mono opacity-70">>> UNLOCKED :: TRADING_ENABLED</p>
+                     <p className="text-3xl font-display font-bold text-white tracking-tight">{bridgeData?.network?.total_supply?.toLocaleString() || '14,204,591'} <span className="text-sm font-normal text-neon-cyan align-top mt-1 inline-block">MTN</span></p>
+                     <p className="text-xs text-text-secondary mt-1 font-mono opacity-70">&gt;&gt; UNLOCKED :: TRADING_ENABLED</p>
                   </div>
                   <div className="relative pl-4 border-l-2 border-white/10">
                      <div className="absolute top-0 left-[-5px] size-2 bg-white/20"></div>
                      <h4 className="text-text-secondary text-xs uppercase tracking-widest mb-1 font-mono">Locked Supply</h4>
-                     <p className="text-3xl font-display font-bold text-white/70 tracking-tight">6,795,409 <span className="text-sm font-normal text-text-secondary align-top mt-1 inline-block">MTN</span></p>
-                     <p className="text-xs text-text-secondary mt-1 font-mono opacity-70">>> VESTING :: RESERVE_FUNDS</p>
+                     <p className="text-3xl font-display font-bold text-white/70 tracking-tight">{(21000000 - (bridgeData?.network?.total_supply || 14204591)).toLocaleString()} <span className="text-sm font-normal text-text-secondary align-top mt-1 inline-block">MTN</span></p>
+                     <p className="text-xs text-text-secondary mt-1 font-mono opacity-70">&gt;&gt; VESTING :: RESERVE_FUNDS</p>
                   </div>
                   <div className="pt-6 border-t border-dashed border-white/10 col-span-1 sm:col-span-2 flex justify-between items-end mt-2">
                      <div>
@@ -104,7 +139,7 @@ const TokenomicsView: React.FC = () => {
                      </div>
                      <div className="text-right">
                         <h4 className="text-neon-purple text-xs uppercase tracking-widest mb-1 font-mono">Market Cap</h4>
-                        <p className="text-2xl font-display font-bold text-white drop-shadow-[0_0_5px_rgba(188,19,254,0.6)]">$6.2B</p>
+                        <p className="text-2xl font-display font-bold text-white drop-shadow-[0_0_5px_rgba(188,19,254,0.6)]">{stats.marketCap}</p>
                      </div>
                   </div>
                </div>
@@ -220,24 +255,20 @@ const TokenomicsView: React.FC = () => {
                      </tr>
                   </thead>
                   <tbody className="text-sm divide-y divide-white/5">
-                     {[
-                        { id: '01', name: 'TensorFoundation', sub: '0x8923...x9A', stake: '1,240,500', stakeVal: '$525.3M', fee: '10%', apy: '18.2%', yield: '+42.5', color: 'bg-gradient-to-br from-neon-cyan to-blue-700' },
-                        { id: '02', name: 'ModernTensor Chat', sub: '0x2b1c...7F', stake: '890,200', stakeVal: '$376.9M', fee: '12%', apy: '19.5%', yield: '+38.1', color: 'bg-gradient-to-br from-neon-purple to-purple-800' },
-                        { id: '03', name: 'DeepMind Cortex', sub: '0x7a8d...1B', stake: '654,100', stakeVal: '$277.0M', fee: '8%', apy: '17.8%', yield: '+22.4', color: 'bg-gradient-to-br from-orange-500 to-red-600' }
-                     ].map((val) => (
+                     {(bridgeData?.validators?.slice(0, 5) || []).map((val: any, idx: number) => (
                         <tr key={val.id} className="hover:bg-neon-cyan/5 transition-colors group">
                            <td className="px-6 py-5">
                               <div className="flex items-center gap-4">
-                                 <span className="text-text-secondary w-4 text-xs font-mono">{val.id}</span>
-                                 <div className={`size-10 rounded ${val.color} p-[1px]`}>
+                                 <span className="text-text-secondary w-4 text-xs font-mono">{idx + 1}</span>
+                                 <div className={`size-10 rounded bg-slate-800 p-[1px]`}>
                                     <div className="w-full h-full bg-black flex items-center justify-center rounded-[3px]">
-                                       <span className="text-white font-bold text-xs">{val.name.substring(0,2).toUpperCase()}</span>
+                                       <span className="text-white font-bold text-xs">{(val.name || 'VA').substring(0,2).toUpperCase()}</span>
                                     </div>
                                  </div>
                                  <div>
-                                    <p className="font-bold text-white text-base group-hover:text-neon-cyan transition-colors font-display tracking-wide">{val.name}</p>
+                                    <p className="font-bold text-white text-base group-hover:text-neon-cyan transition-colors font-display tracking-wide">{val.name || `Validator ${idx+1}`}</p>
                                     <div className="flex items-center gap-2">
-                                       <p className="text-[10px] text-text-secondary font-mono bg-white/5 px-1 rounded">{val.sub}</p>
+                                       <p className="text-[10px] text-text-secondary font-mono bg-white/5 px-1 rounded">{val.address?.substring(0, 10)}...</p>
                                     </div>
                                  </div>
                               </div>

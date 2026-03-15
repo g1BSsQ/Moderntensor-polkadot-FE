@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
+import { BridgeSubnet } from '../types';
+
 interface SubnetDistributionViewProps {
   onBack: () => void;
+  subnet?: BridgeSubnet;
 }
 
 interface Stakeholder {
@@ -63,9 +66,67 @@ const distributionChartData = [
   { name: 'Delegators', value: 10, color: '#135bec' },
 ];
 
-const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack }) => {
-  const [stakeholders, setStakeholders] = useState<Stakeholder[]>(initialStakeholders);
+const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack, subnet }) => {
+  // Map real nodes to stakeholders
+  const mappedStakeholders: Stakeholder[] = (subnet?.nodes || []).map((node, index) => ({
+    rank: index + 1,
+    name: node.type === 'Validator' ? `Validator ${node.uid}` : `Miner ${node.uid}`,
+    address: `${node.coldkey.slice(0, 4)}...${node.coldkey.slice(-3)}`,
+    avatarFallback: (node.type === 'Validator' ? 'V' : 'M') + node.uid,
+    stake: node.stake.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    share: `${((node.stake / (subnet?.total_stake || 1)) * 100).toFixed(1)}%`,
+    shareColor: index < 3 
+      ? (index === 0 ? 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10' : index === 1 ? 'text-neon-pink border-neon-pink/30 bg-neon-pink/10' : 'text-neon-purple border-neon-purple/30 bg-neon-purple/10')
+      : 'text-slate-400 border-white/10 bg-slate-800',
+    change: '0.0%',
+    changeDir: 'neutral',
+    reward: `${node.emission.toFixed(4)} τ`,
+    rankColor: index === 0 ? 'text-neon-cyan' : index === 1 ? 'text-neon-pink' : index === 2 ? 'text-neon-purple' : 'text-slate-500'
+  }));
+
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>(mappedStakeholders.length > 0 ? mappedStakeholders : initialStakeholders);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Calculate real distribution data for the pie chart
+  const validatorStake = (subnet?.nodes || [])
+    .filter(n => n.type === 'Validator')
+    .reduce((acc, n) => acc + n.stake, 0);
+  
+  const minerStake = (subnet?.nodes || [])
+    .filter(n => n.type === 'Miner')
+    .reduce((acc, n) => acc + n.stake, 0);
+
+  const delegatedStake = (subnet?.nodes || [])
+    .reduce((acc, n) => acc + (n.delegated_stake || 0), 0);
+
+  const totalCalculatedStake = validatorStake + minerStake + delegatedStake;
+  const foundationStake = Math.max(0, (subnet?.total_stake || totalCalculatedStake || 1) - totalCalculatedStake);
+
+  const dynamicChartData = [
+    { name: 'Foundation', value: foundationStake > 0 ? foundationStake : 1, color: '#00f3ff' },
+    { name: 'Validators', value: validatorStake > 0 ? validatorStake : 0.5, color: '#ff00ff' },
+    { name: 'Miners', value: minerStake > 0 ? minerStake : 0.3, color: '#bc13fe' },
+    { name: 'Delegators', value: delegatedStake > 0 ? delegatedStake : 0.2, color: '#135bec' },
+  ];
+
+  // Calculate real emissions distribution
+  const allNodes = (subnet?.nodes || []).sort((a, b) => b.emission - a.emission);
+  const totalSubnetEmission = allNodes.reduce((acc, n) => acc + n.emission, 0) || 1;
+  
+  const topEmissionsNodes = allNodes.slice(0, 10).map(node => ({
+    name: node.type === 'Validator' ? `Validator ${node.uid}` : `Miner ${node.uid}`,
+    percent: (node.emission / totalSubnetEmission * 100),
+    emission: node.emission
+  }));
+
+  // Fill in empty slots if less than 10 nodes
+  while (topEmissionsNodes.length < 10) {
+    topEmissionsNodes.push({
+      name: 'N/A',
+      percent: 0,
+      emission: 0
+    });
+  }
 
   const handleLoadMore = () => {
     setIsLoading(true);
@@ -113,13 +174,15 @@ const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack 
                     <span className="material-symbols-outlined text-sm">chevron_right</span>
                     <span className="hover:text-neon-cyan transition-colors cursor-pointer" onClick={onBack}>SUBNETS</span>
                     <span className="material-symbols-outlined text-sm">chevron_right</span>
-                    <span className="text-neon-cyan drop-shadow-[0_0_5px_rgba(0,243,255,0.5)]">SN1: DISTRIBUTION</span>
+                    <span className="text-neon-cyan drop-shadow-[0_0_5px_rgba(0,243,255,0.5)]">{subnet ? `SN${subnet.netuid}: DISTRIBUTION` : 'DISTRIBUTION'}</span>
                 </div>
                 <div className="flex flex-wrap justify-between items-end gap-6 pb-6 border-b border-white/5 relative">
                     <div className="absolute bottom-0 left-0 w-32 h-[1px] bg-gradient-to-r from-neon-cyan to-transparent"></div>
                     <div className="absolute bottom-0 right-0 w-32 h-[1px] bg-gradient-to-l from-neon-pink to-transparent"></div>
                     <div className="flex flex-col gap-3">
-                        <h1 className="text-white text-5xl lg:text-6xl font-black leading-tight tracking-tight uppercase glitch-effect" data-text="Subnet 1 Distribution">Subnet 1 Distribution</h1>
+                        <h1 className="text-white text-5xl lg:text-6xl font-black leading-tight tracking-tight uppercase glitch-effect" data-text={subnet ? `${subnet.title} Distribution` : "Subnet Distribution"}>
+                            {subnet ? `${subnet.title} Distribution` : "Subnet Distribution"}
+                        </h1>
                         <p className="text-slate-300 text-xl font-normal max-w-3xl">
                             Real-time analysis of stake concentration and emission weights.
                             <span className="mx-3 text-white/20">|</span>
@@ -150,7 +213,7 @@ const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack 
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={distributionChartData}
+                                            data={dynamicChartData}
                                             cx="50%"
                                             cy="50%"
                                             innerRadius={80}
@@ -159,30 +222,38 @@ const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack 
                                             dataKey="value"
                                             stroke="none"
                                         >
-                                            {distributionChartData.map((entry, index) => (
+                                            {dynamicChartData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} stroke="none" className="hover:opacity-80 transition-opacity cursor-pointer" />
                                             ))}
                                         </Pie>
                                         <Tooltip 
                                             contentStyle={{ backgroundColor: '#0a0e17', border: '1px solid #1f293a', borderRadius: '8px', boxShadow: '0 0 10px rgba(0,0,0,0.5)' }}
                                             itemStyle={{ color: '#fff', fontWeight: 'bold', fontFamily: 'monospace' }}
-                                            formatter={(value: number) => [`${value}%`, 'Share']}
+                                            formatter={(value: number) => {
+                                                const total = dynamicChartData.reduce((acc, item) => acc + item.value, 0);
+                                                const percent = (value / total * 100).toFixed(1);
+                                                return [`${percent}%`, 'Share'];
+                                            }}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-4xl font-bold text-white glow-text">3.2M</span>
+                                    <span className="text-4xl font-bold text-white glow-text">
+                                        {subnet?.total_stake ? (subnet.total_stake >= 1000000 ? `${(subnet.total_stake / 1000000).toFixed(1)}M` : `${(subnet.total_stake / 1000).toFixed(1)}K`) : '0.0'}
+                                    </span>
                                     <span className="text-xs text-slate-300 uppercase tracking-widest font-mono mt-1">Total Stake</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full">
-                                {distributionChartData.map((item, idx) => (
+                                {dynamicChartData.map((item, idx) => (
                                     <div key={idx} className="flex items-center gap-3 p-3 rounded bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
                                         <div className="w-4 h-4 rounded-sm shadow-[0_0_8px_currentColor]" style={{ backgroundColor: item.color, color: item.color }}></div>
                                         <div className="flex flex-col">
                                             <span className="text-sm text-slate-300 uppercase">{item.name}</span>
-                                            <span className="text-base font-bold text-white">{item.value}%</span>
+                                            <span className="text-base font-bold text-white">
+                                                {subnet?.total_stake ? `${((item.value / subnet.total_stake) * 100).toFixed(1)}%` : '0%'}
+                                            </span>
                                         </div>
                                     </div>
                                 ))}
@@ -206,68 +277,59 @@ const SubnetDistributionView: React.FC<SubnetDistributionViewProps> = ({ onBack 
                             </div>
                         </div>
                         <div className="grid grid-cols-4 grid-rows-4 gap-4 flex-grow min-h-[350px]">
+                            {/* Top 1 */}
                             <div className="col-span-2 row-span-2 bg-gradient-to-br from-neon-pink/20 to-neon-pink/5 border border-neon-pink/30 rounded-lg p-5 relative group overflow-hidden cursor-pointer hover:border-neon-pink/60 transition-all">
                                 <div className="absolute inset-0 bg-neon-pink/0 group-hover:bg-neon-pink/10 transition-colors"></div>
                                 <div className="relative z-10 h-full flex flex-col justify-between">
                                     <div className="flex justify-between items-start">
-                                        <span className="font-bold text-white tracking-wide text-base">Top Miner A</span>
+                                        <span className="font-bold text-white tracking-wide text-base">{topEmissionsNodes[0].name}</span>
                                         <span className="material-symbols-outlined text-neon-pink text-lg">trending_up</span>
                                     </div>
                                     <div>
-                                        <span className="text-3xl font-bold text-neon-pink drop-shadow-[0_0_5px_#ff00ff]">12.4%</span>
-                                        <span className="block text-sm text-slate-300 font-mono mt-1">1,240 M / day</span>
+                                        <span className="text-3xl font-bold text-neon-pink drop-shadow-[0_0_5px_#ff00ff]">{topEmissionsNodes[0].percent.toFixed(1)}%</span>
+                                        <span className="block text-sm text-slate-300 font-mono mt-1">{topEmissionsNodes[0].emission.toFixed(4)} / blk</span>
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Top 2 */}
                             <div className="col-span-2 row-span-1 bg-gradient-to-br from-neon-purple/20 to-neon-purple/5 border border-neon-purple/30 rounded-lg p-5 relative group overflow-hidden cursor-pointer hover:border-neon-purple/60 transition-all">
                                 <div className="absolute inset-0 bg-neon-purple/0 group-hover:bg-neon-purple/10 transition-colors"></div>
                                 <div className="relative z-10 h-full flex flex-col justify-center">
                                     <div className="flex justify-between items-center">
-                                        <span className="font-bold text-white text-base">Neural Net B</span>
-                                        <span className="text-xl font-bold text-neon-purple">8.1%</span>
+                                        <span className="font-bold text-white text-base">{topEmissionsNodes[1].name}</span>
+                                        <span className="text-xl font-bold text-neon-purple">{topEmissionsNodes[1].percent.toFixed(1)}%</span>
                                     </div>
-                                    <span className="block text-sm text-slate-300 font-mono">810 M / day</span>
+                                    <span className="block text-sm text-slate-300 font-mono">{topEmissionsNodes[1].emission.toFixed(4)} / blk</span>
                                 </div>
                             </div>
+
+                            {/* Top 3 */}
                             <div className="col-span-1 row-span-2 bg-gradient-to-br from-neon-cyan/20 to-neon-cyan/5 border border-neon-cyan/30 rounded-lg p-4 relative group overflow-hidden cursor-pointer hover:border-neon-cyan/60 transition-all">
                                 <div className="absolute inset-0 bg-neon-cyan/0 group-hover:bg-neon-cyan/10 transition-colors"></div>
                                 <div className="relative z-10 h-full flex flex-col justify-between">
-                                    <span className="font-bold text-white text-sm truncate">Tensor C</span>
+                                    <span className="font-bold text-white text-sm truncate">{topEmissionsNodes[2].name}</span>
                                     <div>
-                                        <span className="text-xl font-bold text-neon-cyan">6.5%</span>
+                                        <span className="text-xl font-bold text-neon-cyan">{topEmissionsNodes[2].percent.toFixed(1)}%</span>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Top 4 */}
                             <div className="col-span-1 row-span-1 bg-gradient-to-br from-neon-blue/20 to-neon-blue/5 border border-neon-blue/30 rounded-lg p-4 relative group overflow-hidden cursor-pointer hover:border-neon-blue/60 transition-all">
                                 <div className="relative z-10 flex justify-between items-center h-full">
-                                    <span className="font-bold text-white text-sm">Node D</span>
-                                    <span className="text-sm font-bold text-neon-blue">4.2%</span>
+                                    <span className="font-bold text-white text-sm truncate">{topEmissionsNodes[3].name}</span>
+                                    <span className="text-sm font-bold text-neon-blue">{topEmissionsNodes[3].percent.toFixed(1)}%</span>
                                 </div>
                             </div>
-                            <div className="col-span-1 row-span-1 bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors flex flex-col justify-center">
-                                <span className="text-xs text-slate-300">Miner E</span>
-                                <span className="text-sm font-bold text-slate-200">3.8%</span>
-                            </div>
-                            <div className="col-span-1 row-span-1 bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors flex flex-col justify-center">
-                                <span className="text-xs text-slate-300">Miner F</span>
-                                <span className="text-sm font-bold text-slate-200">3.1%</span>
-                            </div>
-                            <div className="col-span-1 row-span-1 bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors flex flex-col justify-center">
-                                <span className="text-xs text-slate-300">Miner G</span>
-                                <span className="text-sm font-bold text-slate-200">2.9%</span>
-                            </div>
-                            <div className="col-span-1 row-span-1 bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors flex flex-col justify-center">
-                                <span className="text-xs text-slate-300">Miner H</span>
-                                <span className="text-sm font-bold text-slate-200">2.4%</span>
-                            </div>
-                            <div className="col-span-1 row-span-1 bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors flex flex-col justify-center">
-                                <span className="text-xs text-slate-300">Miner I</span>
-                                <span className="text-sm font-bold text-slate-200">1.8%</span>
-                            </div>
-                            <div className="col-span-1 row-span-1 bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors flex flex-col justify-center">
-                                <span className="text-xs text-slate-300">Other</span>
-                                <span className="text-sm font-bold text-slate-200">~15%</span>
-                            </div>
+
+                            {/* Top 5-10 */}
+                            {topEmissionsNodes.slice(4, 10).map((node, idx) => (
+                                <div key={idx} className="col-span-1 row-span-1 bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors flex flex-col justify-center">
+                                    <span className="text-xs text-slate-300 truncate">{node.name}</span>
+                                    <span className="text-sm font-bold text-slate-200">{node.percent.toFixed(1)}%</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

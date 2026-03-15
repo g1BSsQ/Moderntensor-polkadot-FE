@@ -1,24 +1,119 @@
 export enum ViewState {
-  HOME = 'HOME',
-  EXPLORER = 'EXPLORER',
   SUBNETS = 'SUBNETS',
   SUBNET_NODES = 'SUBNET_NODES',
-  SUBNET_REGISTRATION = 'SUBNET_REGISTRATION',
-  SUBNET_DISTRIBUTION = 'SUBNET_DISTRIBUTION',
   SUBNET_WEIGHTS = 'SUBNET_WEIGHTS',
   VALIDATORS = 'VALIDATORS',
   VALIDATOR_DETAIL = 'VALIDATOR_DETAIL',
   ACCOUNT = 'ACCOUNT',
   ACCOUNT_HISTORY = 'ACCOUNT_HISTORY',
-  ALL_TRANSACTIONS = 'ALL_TRANSACTIONS',
-  ALL_BLOCKS = 'ALL_BLOCKS',
   CONTRACT_DETAILS = 'CONTRACT_DETAILS',
-  GOVERNANCE = 'GOVERNANCE',
   TOKENOMICS = 'TOKENOMICS',
-  CREATE_PROPOSAL = 'CREATE_PROPOSAL',
   TRANSACTION_DETAILS = 'TRANSACTION_DETAILS',
-  BLOCK_DETAILS = 'BLOCK_DETAILS'
+  BLOCK_DETAILS = 'BLOCK_DETAILS',
+  SUBNET_REGISTRATION = 'SUBNET_REGISTRATION',
+  SUBNET_DISTRIBUTION = 'SUBNET_DISTRIBUTION'
 }
+
+// ═══════════════════════════════════════════════════════
+// Data Bridge Types — matches output of data_bridge.py
+// ═══════════════════════════════════════════════════════
+
+export interface BridgeNetwork {
+  block: number;
+  total_staked: number;
+  total_supply: number;
+  market_cap: number;
+  tps: number;
+  gas: number;
+  active_accounts: number;
+}
+
+export interface BridgeNode {
+  uid: number;
+  hotkey: string;
+  coldkey: string;
+  type: 'Validator' | 'Miner';
+  stake: number;
+  delegated_stake: number;
+  rank: number;
+  trust: number;
+  incentive: number;
+  emission: number;
+  active: boolean;
+  performance_history: number[];
+}
+
+export type WeightMatrix = Record<string, Record<string, number>>;
+
+export interface BridgeSubnet {
+  id: string;
+  netuid: number;
+  title: string;
+  subtitle: string;
+  owner: string;
+  active: boolean;
+  emission: string;
+  emission_share: number;
+  desc: string;
+  miners: string;
+  validators: string;
+  unique_validators: string;
+  tempo: string;
+  max_nodes: number;
+  total_stake: number;
+  registration_cost: number;
+  difficulty: number;
+  burn_rate: number;
+  nodes: BridgeNode[];
+  weights: WeightMatrix;
+}
+
+export interface BridgeValidator {
+  id: string;
+  name: string;
+  address: string;
+  stake: string;
+  stakeVal: string;
+  fee: string;
+  apy: string;
+  yield: string;
+  voter_power: string;
+}
+
+export interface BridgeAccount {
+  address: string;
+  label: string;
+  balance: number;
+  staked: number;
+  rewards: number;
+  total: number;
+  is_simulated: boolean;
+}
+
+export interface BridgeTransaction {
+  hash: string;
+  method: string;
+  block: number;
+  amount: number;
+  timestamp: string;
+  status: 'Success' | 'Failed';
+  from: string;
+  to: string;
+  type: 'Transfer' | 'Stake' | 'Reward' | 'Registration' | 'Other';
+}
+
+export interface BridgeData {
+  last_updated: string;
+  network: BridgeNetwork;
+  subnets: BridgeSubnet[];
+  validators: BridgeValidator[];
+  accounts: Record<string, BridgeAccount>;
+  transactions: Record<string, BridgeTransaction[]>;
+}
+
+// ═══════════════════════════════════════════════════════
+// UI Types
+// ═══════════════════════════════════════════════════════
 
 export interface Subnet {
   rank: number;
@@ -56,6 +151,10 @@ export interface Validator {
   fee: number;
   apy: number;
   yield24h: string;
+  voterPower: string;
   verified: boolean;
   avatarColor: string;
+  trust?: number;
+  incentive?: number;
+  performance_history?: number[];
 }

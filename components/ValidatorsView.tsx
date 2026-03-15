@@ -1,29 +1,71 @@
 import React, { useState, useMemo } from 'react';
 import { Validator } from '../types';
+import { useDataBridge } from '../hooks/useDataBridge';
 
 interface ValidatorsViewProps {
   onBack: () => void;
   onSelectValidator: (id: string) => void;
 }
 
-const mockValidators: Validator[] = [
-  { rank: 1, identity: 'ModernTensor Fdn', address: '5Hh9...2kL', stake: '1,245,320', stakeUsd: '$5.2M', fee: 18, apy: 18.2, yield24h: '420.5', verified: true, avatarColor: 'bg-neon-cyan' },
-  { rank: 2, identity: 'TensorStats', address: '7Jk2...9mP', stake: '892,100', stakeUsd: '$3.7M', fee: 18, apy: 19.5, yield24h: '380.2', verified: true, avatarColor: 'bg-neon-pink' },
-  { rank: 3, identity: 'Neural Interlink', address: '3Xy8...1qR', stake: '650,450', stakeUsd: '$2.7M', fee: 18, apy: 17.8, yield24h: '210.4', verified: true, avatarColor: 'bg-neon-purple' },
-  { rank: 4, identity: 'Sigma Cluster', address: '9Lm4...6vN', stake: '420,000', stakeUsd: '$1.7M', fee: 12, apy: 16.5, yield24h: '180.1', verified: true, avatarColor: 'bg-teal-400' },
-  { rank: 5, identity: 'DeepMind (Unofficial)', address: '2Kp1...5jD', stake: '380,200', stakeUsd: '$1.6M', fee: 10, apy: 18.9, yield24h: '165.8', verified: false, avatarColor: 'bg-orange-500' },
-  { rank: 6, identity: 'Foundry', address: '8Qx2...9aB', stake: '310,500', stakeUsd: '$1.3M', fee: 18, apy: 18.0, yield24h: '140.2', verified: true, avatarColor: 'bg-blue-500' },
-  { rank: 7, identity: 'Rogue Tensor', address: '4Wm9...2zX', stake: '290,100', stakeUsd: '$1.2M', fee: 15, apy: 17.2, yield24h: '125.5', verified: true, avatarColor: 'bg-red-500' },
-  { rank: 8, identity: 'Datura', address: '6Yn1...4pL', stake: '150,000', stakeUsd: '$630K', fee: 18, apy: 18.5, yield24h: '65.2', verified: true, avatarColor: 'bg-indigo-500' },
-];
-
 const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidator }) => {
+  const { data: bridgeData } = useDataBridge();
   const [stakeAmount, setStakeAmount] = useState<number>(1000);
+  const [filter, setFilter] = useState<'All' | 'Verified' | 'LowFee'>('All');
+  const [search, setSearch] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Validator | null, direction: 'asc' | 'desc' }>({ key: 'rank', direction: 'asc' });
-  const avgApy = 0.182; // 18.2%
+
+  // Calculate real network stats
+  const bridgeValidators = useMemo(() => {
+    return bridgeData?.validators.map((v, idx) => ({
+      rank: idx + 1,
+      identity: v.name,
+      address: v.address,
+      stake: v.stake,
+      stakeUsd: v.stakeVal,
+      fee: parseInt(v.fee) || 18,
+      apy: parseFloat(v.apy) || 0,
+      yield24h: v.yield,
+      voterPower: v.voter_power,
+      verified: true,
+      avatarColor: 'bg-neon-cyan'
+    })) || [];
+  }, [bridgeData]);
+
+  const stats = useMemo(() => {
+    const totalStaked = bridgeData?.network?.total_staked || 0;
+    const validatorList = bridgeValidators;
+    
+    // Calculate median APY
+    const apys = validatorList.map(v => v.apy).sort((a,b) => a-b);
+    const medianApy = apys.length > 0 ? (apys.length % 2 === 0 ? (apys[apys.length/2 - 1] + apys[apys.length/2]) / 2 : apys[Math.floor(apys.length/2)]) : 0;
+    
+    // Calculate average trust
+    const subnets = bridgeData?.subnets || [];
+    const allNodes = subnets.flatMap(s => s.nodes);
+    const avgTrust = allNodes.length > 0 ? (allNodes.reduce((acc, n) => acc + n.trust, 0) / allNodes.length) * 100 : 99.9;
+
+    return {
+      total_staked: totalStaked,
+      active_validators: validatorList.length,
+      median_apy: medianApy || 18.2,
+      avg_trust: avgTrust
+    };
+  }, [bridgeData, bridgeValidators]);
+
+  const displayValidators = useMemo(() => {
+    return bridgeValidators.filter(v => {
+        const matchesFilter = filter === 'All' || 
+                             (filter === 'Verified' && v.verified) || 
+                             (filter === 'LowFee' && v.fee <= 12);
+        const matchesSearch = v.identity.toLowerCase().includes(search.toLowerCase()) || 
+                             v.address.toLowerCase().includes(search.toLowerCase());
+        return matchesFilter && matchesSearch;
+    });
+  }, [bridgeValidators, filter, search]);
 
   const calculateReturn = (amount: number, period: 'daily' | 'monthly' | 'yearly') => {
-    const yearlyReturn = amount * avgApy;
+    const apyDecimal = stats.median_apy / 100;
+    const yearlyReturn = amount * apyDecimal;
     if (period === 'daily') return (yearlyReturn / 365).toFixed(2);
     if (period === 'monthly') return (yearlyReturn / 12).toFixed(2);
     return yearlyReturn.toFixed(2);
@@ -38,12 +80,12 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
   };
 
   const sortedValidators = useMemo(() => {
-      let sortableItems = [...mockValidators];
+      let sortableItems = [...displayValidators];
       if (sortConfig.key !== null) {
           sortableItems.sort((a, b) => {
-              // Handle numeric string conversion for sorting
-              let aValue: any = a[sortConfig.key!];
-              let bValue: any = b[sortConfig.key!];
+              const key = sortConfig.key as keyof Validator;
+              let aValue: any = a[key];
+              let bValue: any = b[key];
 
               if (typeof aValue === 'string' && !isNaN(parseFloat(aValue.replace(/,/g, '')))) {
                   aValue = parseFloat(aValue.replace(/,/g, ''));
@@ -60,7 +102,7 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
           });
       }
       return sortableItems;
-  }, [sortConfig]);
+  }, [sortConfig, displayValidators]);
 
   const getSortIcon = (key: keyof Validator) => {
       if (sortConfig.key !== key) return <span className="material-symbols-outlined text-[10px] text-slate-600 opacity-50">unfold_more</span>;
@@ -109,13 +151,6 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-4">
                         <h1 className="text-white text-4xl lg:text-5xl font-black leading-tight tracking-tight uppercase glitch-effect" data-text="Network Validators">Network Validators</h1>
-                        <span className="px-3 py-1 rounded text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/40 uppercase tracking-widest shadow-[0_0_10px_rgba(74,222,128,0.2)] flex items-center gap-2">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            Consensus Active
-                        </span>
                     </div>
                     <p className="text-slate-400 text-lg font-light max-w-2xl">
                         Secure the network by delegating your stake to trusted validators.
@@ -129,28 +164,28 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
                     <div className="absolute -right-10 -top-10 w-24 h-24 bg-neon-cyan/5 rounded-full blur-3xl group-hover:bg-neon-cyan/10 transition-colors"></div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Active Validators</p>
                     <div className="flex items-end gap-3 mt-1 z-10">
-                        <p className="text-white text-3xl font-bold leading-none glow-text">64 <span className="text-sm text-slate-500 font-normal">/ 128</span></p>
+                        <p className="text-white text-3xl font-bold leading-none glow-text">{stats.active_validators} <span className="text-base text-slate-500 font-normal"> Operators</span></p>
                     </div>
                 </div>
                 <div className="glass-panel p-5 rounded-lg neon-border-pink relative overflow-hidden group">
                     <div className="absolute -right-10 -top-10 w-24 h-24 bg-neon-pink/5 rounded-full blur-3xl group-hover:bg-neon-pink/10 transition-colors"></div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Total Staked</p>
                     <div className="flex items-end gap-3 mt-1 z-10">
-                        <p className="text-white text-3xl font-bold leading-none glow-text-pink">4.2M <span className="text-lg text-neon-pink">M</span></p>
+                        <p className="text-white text-3xl font-bold leading-none glow-text-pink">{stats.total_staked > 1000000 ? (stats.total_staked / 1000000).toFixed(1) + 'M' : stats.total_staked.toLocaleString()} <span className="text-lg text-neon-pink">M</span></p>
                     </div>
                 </div>
                 <div className="glass-panel p-5 rounded-lg border-l-2 border-l-neon-purple shadow-[inset_10px_0_20px_-10px_rgba(188,19,254,0.1)] relative overflow-hidden group">
                     <div className="absolute -right-10 -top-10 w-24 h-24 bg-neon-purple/5 rounded-full blur-3xl group-hover:bg-neon-purple/10 transition-colors"></div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Median APY</p>
                     <div className="flex items-end gap-3 mt-1 z-10">
-                        <p className="text-white text-3xl font-bold leading-none text-neon-purple drop-shadow-[0_0_5px_rgba(188,19,254,0.5)]">18.2%</p>
+                        <p className="text-white text-3xl font-bold leading-none text-neon-purple drop-shadow-[0_0_5px_rgba(188,19,254,0.5)]">{stats.median_apy.toFixed(1)}%</p>
                     </div>
                 </div>
                 <div className="glass-panel p-5 rounded-lg border-l-2 border-l-green-500 shadow-[inset_10px_0_20px_-10px_rgba(34,197,94,0.1)] relative overflow-hidden group">
                     <div className="absolute -right-10 -top-10 w-24 h-24 bg-green-500/5 rounded-full blur-3xl group-hover:bg-green-500/10 transition-colors"></div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Network Trust</p>
                     <div className="flex items-end gap-3 mt-1 z-10">
-                        <p className="text-white text-3xl font-bold leading-none text-green-400">99.9%</p>
+                        <p className="text-white text-3xl font-bold leading-none text-green-400">{stats.avg_trust.toFixed(1)}%</p>
                     </div>
                 </div>
             </div>
@@ -161,12 +196,33 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
                     <div className="glass-panel p-4 rounded-xl flex flex-col sm:flex-row gap-4 justify-between items-center border border-white/5">
                         <div className="relative w-full sm:flex-1 max-w-md group">
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-neon-cyan transition-colors">search</span>
-                            <input className="w-full bg-[#050b14]/50 text-white border border-white/10 rounded-lg px-4 py-2.5 pl-10 focus:ring-1 focus:ring-neon-cyan focus:border-neon-cyan placeholder:text-slate-600 text-sm transition-all outline-none" placeholder="Search validators..." type="text"/>
+                            <input 
+                                className="w-full bg-[#050b14]/50 text-white border border-white/10 rounded-lg px-4 py-2.5 pl-10 focus:ring-1 focus:ring-neon-cyan focus:border-neon-cyan placeholder:text-slate-600 text-sm transition-all outline-none" 
+                                placeholder="Search validators..." 
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
                         </div>
                         <div className="flex items-center gap-2 bg-[#050b14]/50 p-1 rounded-lg border border-white/5">
-                            <button className="px-4 py-1.5 rounded-md bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 shadow-[0_0_10px_rgba(0,243,255,0.1)] text-xs font-bold uppercase whitespace-nowrap tracking-wider">All</button>
-                            <button className="px-4 py-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-xs font-bold uppercase whitespace-nowrap tracking-wider">Verified</button>
-                            <button className="px-4 py-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-xs font-bold uppercase whitespace-nowrap tracking-wider">Low Fee</button>
+                            <button 
+                                onClick={() => setFilter('All')}
+                                className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase whitespace-nowrap tracking-wider transition-all ${filter === 'All' ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 shadow-[0_0_10px_rgba(0,243,255,0.1)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                All
+                            </button>
+                            <button 
+                                onClick={() => setFilter('Verified')}
+                                className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase whitespace-nowrap tracking-wider transition-all ${filter === 'Verified' ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 shadow-[0_0_10px_rgba(0,243,255,0.1)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                Verified
+                            </button>
+                            <button 
+                                onClick={() => setFilter('LowFee')}
+                                className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase whitespace-nowrap tracking-wider transition-all ${filter === 'LowFee' ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 shadow-[0_0_10px_rgba(0,243,255,0.1)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                Low Fee
+                            </button>
                         </div>
                     </div>
 
@@ -182,23 +238,26 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
                                             <div className="flex items-center gap-1">Validator Identity {getSortIcon('identity')}</div>
                                         </th>
                                         <th className="px-6 py-5 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('stake')}>
-                                            <div className="flex items-center justify-end gap-1">Total Stake {getSortIcon('stake')}</div>
+                                            <div className="flex items-center justify-end gap-1">On-Chain Stake {getSortIcon('stake')}</div>
                                         </th>
                                         <th className="px-6 py-5 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('fee')}>
                                             <div className="flex items-center justify-end gap-1">Fee {getSortIcon('fee')}</div>
                                         </th>
                                         <th className="px-6 py-5 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('apy')}>
-                                            <div className="flex items-center justify-end gap-1">APY {getSortIcon('apy')}</div>
+                                            <div className="flex items-center justify-end gap-1">Est. Yield % {getSortIcon('apy')}</div>
                                         </th>
                                         <th className="px-6 py-5 text-right font-mono cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('yield24h')}>
-                                            <div className="flex items-center justify-end gap-1">24h Yield {getSortIcon('yield24h')}</div>
+                                            <div className="flex items-center justify-end gap-1">Pending Rewards {getSortIcon('yield24h')}</div>
+                                        </th>
+                                        <th className="px-6 py-5 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('voterPower')}>
+                                            <div className="flex items-center justify-end gap-1">Voter Power {getSortIcon('voterPower')}</div>
                                         </th>
                                         <th className="px-6 py-5 text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm divide-y divide-white/5">
                                     {sortedValidators.map((val) => (
-                                        <tr key={val.rank} onClick={() => onSelectValidator(val.address)} className="group hover:bg-neon-cyan/5 transition-colors duration-300 cursor-pointer scan-row">
+                                        <tr key={val.address} onClick={() => onSelectValidator(val.address)} className="group hover:bg-neon-cyan/5 transition-colors duration-300 cursor-pointer scan-row">
                                             <td className="px-6 py-5 text-center text-slate-500 group-hover:text-neon-cyan font-mono font-bold">{val.rank}</td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-4">
@@ -227,7 +286,13 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
                                                 <span className="text-neon-green font-bold font-mono">{val.apy}%</span>
                                             </td>
                                             <td className="px-6 py-5 text-right font-mono text-slate-300">
-                                                +{val.yield24h} M
+                                                {parseFloat(val.yield24h.replace(/,/g, '')) > 0 ? '+' : ''}{val.yield24h} M
+                                            </td>
+                                            <td className="px-6 py-5 text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-neon-pink font-bold font-mono">{val.voterPower}</span>
+                                                    <span className="text-[10px] text-slate-500 uppercase tracking-tighter">Quadratic Power</span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-5 text-center">
                                                 <button className="px-4 py-1.5 rounded-md border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan hover:text-black transition-all text-xs font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(0,243,255,0.1)] hover:shadow-[0_0_15px_rgba(0,243,255,0.4)]">
@@ -238,11 +303,6 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
-                        <div className="p-4 border-t border-white/10 flex justify-center bg-white/[0.02] hover:bg-white/[0.04] transition-colors cursor-pointer">
-                            <button className="text-xs font-bold text-neon-cyan hover:text-white uppercase tracking-widest flex items-center gap-2 transition-colors">
-                                Load More Validators <span className="material-symbols-outlined text-base">expand_more</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -307,7 +367,7 @@ const ValidatorsView: React.FC<ValidatorsViewProps> = ({ onBack, onSelectValidat
                             </div>
 
                             <div className="pt-4 border-t border-white/10 text-[10px] text-slate-500 text-center font-mono">
-                                *Projections based on 18.2% APY. Network difficulty varies.
+                                *Projections based on {stats.median_apy.toFixed(1)}% APY. Network difficulty varies.
                             </div>
                         </div>
                     </div>

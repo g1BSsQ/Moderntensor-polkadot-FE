@@ -1,17 +1,21 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
+import SpotlightCard from './ui/SpotlightCard';
+import { useDataBridge } from '../hooks/useDataBridge';
 
 interface SubnetsHubProps {
-  onSelect: (subnetId: string) => void;
+  onSelect: (subnetId: string, netuid: number) => void;
 }
 
 interface SubnetInfo {
   id: string;
+  netuid: number;
   title: string;
   subtitle: string;
   emission: string;
   desc: string;
   miners: string;
   validators: string;
+  unique_validators: string;
   tempo: string;
   textColor: string;
   bgColor: string;
@@ -21,65 +25,6 @@ interface SubnetInfo {
   hex: string;
   sparklineType: 'curve' | 'sharp';
 }
-
-const initialSubnets: SubnetInfo[] = [
-  { 
-    id: 'SN1', title: 'Text Gen', subtitle: 'Prompting', emission: '18.5%', 
-    desc: 'Decentralized text generation and large language model fine-tuning network.', 
-    miners: '1,024', validators: '64', tempo: '360 blk', 
-    textColor: 'text-neon-cyan', bgColor: 'bg-neon-cyan/10', borderColor: 'border-neon-cyan/30', 
-    hoverText: 'group-hover:text-neon-cyan', shadow: 'shadow-[0_0_10px_rgba(0,243,255,0.2)]', hex: '#00f3ff', sparklineType: 'curve'
-  },
-  { 
-    id: 'SN2', title: 'Image Gen', subtitle: 'Diffusion', emission: '12.2%', 
-    desc: 'Distributed stable diffusion inference and model training network.', 
-    miners: '850', validators: '42', tempo: '100 blk', 
-    textColor: 'text-neon-pink', bgColor: 'bg-neon-pink/10', borderColor: 'border-neon-pink/30', 
-    hoverText: 'group-hover:text-neon-pink', shadow: 'shadow-[0_0_10px_rgba(255,0,255,0.2)]', hex: '#ff00ff', sparklineType: 'curve'
-  },
-  { 
-    id: 'SN3', title: 'Fin. Data', subtitle: 'Time Series', emission: '8.7%', 
-    desc: 'Predictive financial modeling and real-time market data analysis.', 
-    miners: '512', validators: '30', tempo: '360 blk', 
-    textColor: 'text-neon-purple', bgColor: 'bg-neon-purple/10', borderColor: 'border-neon-purple/30', 
-    hoverText: 'group-hover:text-neon-purple', shadow: 'shadow-[0_0_10px_rgba(188,19,254,0.2)]', hex: '#bc13fe', sparklineType: 'curve'
-  },
-  { 
-    id: 'SN4', title: 'Storage', subtitle: 'Files', emission: '5.1%', 
-    desc: 'Distributed file storage with cryptographic proof of retrievability.', 
-    miners: '2,400', validators: '128', tempo: '100 blk', 
-    textColor: 'text-teal-400', bgColor: 'bg-teal-400/10', borderColor: 'border-teal-400/30', 
-    hoverText: 'group-hover:text-teal-400', shadow: 'shadow-[0_0_10px_rgba(45,212,191,0.2)]', hex: '#2dd4bf', sparklineType: 'curve'
-  },
-  { 
-    id: 'SN5', title: 'Scraping', subtitle: 'Data', emission: '4.5%', 
-    desc: 'Automated web scraping and data aggregation for AI training datasets.', 
-    miners: '450', validators: '25', tempo: '360 blk', 
-    textColor: 'text-orange-500', bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/30', 
-    hoverText: 'group-hover:text-orange-500', shadow: 'shadow-[0_0_10px_rgba(249,115,22,0.2)]', hex: '#f97316', sparklineType: 'sharp'
-  },
-  { 
-    id: 'SN6', title: 'Audio Gen', subtitle: 'Sound', emission: '3.8%', 
-    desc: 'Text-to-speech and music generation subnet powered by transformers.', 
-    miners: '320', validators: '18', tempo: '100 blk', 
-    textColor: 'text-blue-500', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30', 
-    hoverText: 'group-hover:text-blue-500', shadow: 'shadow-[0_0_10px_rgba(59,130,246,0.2)]', hex: '#3b82f6', sparklineType: 'curve'
-  },
-  { 
-    id: 'SN7', title: 'Translate', subtitle: 'Language', emission: '3.2%', 
-    desc: 'High-fidelity multi-language translation and localization services.', 
-    miners: '280', validators: '16', tempo: '360 blk', 
-    textColor: 'text-indigo-500', bgColor: 'bg-indigo-500/10', borderColor: 'border-indigo-500/30', 
-    hoverText: 'group-hover:text-indigo-500', shadow: 'shadow-[0_0_10px_rgba(99,102,241,0.2)]', hex: '#6366f1', sparklineType: 'sharp'
-  },
-  { 
-    id: 'SN8', title: 'Pretraining', subtitle: 'Base', emission: '2.5%', 
-    desc: 'Distributed pretraining of foundational models from scratch.', 
-    miners: '600', validators: '35', tempo: '100 blk', 
-    textColor: 'text-emerald-500', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30', 
-    hoverText: 'group-hover:text-emerald-500', shadow: 'shadow-[0_0_10px_rgba(16,185,129,0.2)]', hex: '#10b981', sparklineType: 'curve'
-  },
-];
 
 // Skeleton Card Component
 const SubnetSkeleton = () => (
@@ -122,107 +67,48 @@ const SubnetSkeleton = () => (
     </div>
 );
 
-// New Interactive Card Component with Spotlight Effect
-interface SpotlightCardProps {
-  children: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-  style?: React.CSSProperties;
-}
-
-const SpotlightCard: React.FC<SpotlightCardProps> = ({ children, onClick, className = "", style = {} }) => {
-  const divRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [opacity, setOpacity] = useState(0);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!divRef.current) return;
-    const div = divRef.current;
-    const rect = div.getBoundingClientRect();
-    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  };
-
-  const handleMouseEnter = () => setOpacity(1);
-  const handleMouseLeave = () => setOpacity(0);
-
-  return (
-    <div
-      ref={divRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={onClick}
-      className={`relative overflow-hidden rounded-xl border border-white/10 bg-panel-dark transition-all duration-300 ${className}`}
-      style={style}
-    >
-      <div
-        className="pointer-events-none absolute -inset-px transition duration-300 z-0"
-        style={{
-          opacity,
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(0, 243, 255, 0.1), transparent 40%)`,
-        }}
-      />
-      <div className="relative z-10 h-full flex flex-col">
-        {children}
-      </div>
-    </div>
-  );
-};
-
 const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
-  const [subnets, setSubnets] = useState<SubnetInfo[]>(initialSubnets);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data, loading: isBridgeLoading, error: bridgeError } = useDataBridge();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleLoadMore = () => {
-    setIsLoading(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-        const nextId = subnets.length + 1;
-        const newSubnets: SubnetInfo[] = [
-            {
-                id: `SN${nextId}`, title: 'Video Gen', subtitle: 'Synthesis', emission: '1.8%',
-                desc: 'High-fidelity video generation and temporal consistency validation.',
-                miners: '1,200', validators: '12', tempo: '720 blk',
-                textColor: 'text-neon-red', bgColor: 'bg-neon-red/10', borderColor: 'border-neon-red/30',
-                hoverText: 'group-hover:text-neon-red', shadow: 'shadow-[0_0_10px_rgba(255,0,85,0.2)]', hex: '#ff0055', sparklineType: 'curve'
-            },
-            {
-                id: `SN${nextId+1}`, title: 'Biology', subtitle: 'Folding', emission: '1.5%',
-                desc: 'Protein folding simulations and molecular discovery network.',
-                miners: '85', validators: '10', tempo: '360 blk',
-                textColor: 'text-neon-green', bgColor: 'bg-neon-green/10', borderColor: 'border-neon-green/30',
-                hoverText: 'group-hover:text-neon-green', shadow: 'shadow-[0_0_10px_rgba(0,255,163,0.2)]', hex: '#00ffa3', sparklineType: 'sharp'
-            },
-            {
-                id: `SN${nextId+2}`, title: 'Gaming', subtitle: 'Assets', emission: '1.1%',
-                desc: 'Procedural 3D asset generation for metaverse applications.',
-                miners: '240', validators: '18', tempo: '100 blk',
-                textColor: 'text-yellow-400', bgColor: 'bg-yellow-400/10', borderColor: 'border-yellow-400/30',
-                hoverText: 'group-hover:text-yellow-400', shadow: 'shadow-[0_0_10px_rgba(250,204,21,0.2)]', hex: '#facc15', sparklineType: 'curve'
-            },
-            {
-                id: `SN${nextId+3}`, title: 'Compute', subtitle: 'Training', emission: '0.9%',
-                desc: 'Decentralized compute resource allocation for model training.',
-                miners: '1,500', validators: '50', tempo: '100 blk',
-                textColor: 'text-slate-300', bgColor: 'bg-slate-500/10', borderColor: 'border-slate-500/30',
-                hoverText: 'group-hover:text-white', shadow: 'shadow-[0_0_10px_rgba(148,163,184,0.2)]', hex: '#cbd5e1', sparklineType: 'sharp'
-            }
-        ];
-        setSubnets(prev => [...prev, ...newSubnets]);
-        setIsLoading(false);
-    }, 2000); // Increased delay to show off the skeleton
-  };
-
+  // Map bridge subnets to SubnetInfo format
   const filteredSubnets = useMemo(() => {
-    if (!searchQuery) return subnets;
-    return subnets.filter(s => 
+    if (!data?.subnets) return [];
+    
+    const bridgeSubnets: SubnetInfo[] = data.subnets.map(s => ({
+      id: s.id,
+      netuid: s.netuid,
+      title: s.title,
+      subtitle: s.subtitle,
+      emission: s.emission,
+      desc: s.desc,
+      miners: s.miners,
+      validators: s.validators,
+      unique_validators: s.unique_validators || '0',
+      tempo: s.tempo,
+      textColor: 'text-neon-cyan', 
+      bgColor: 'bg-neon-cyan/10',
+      borderColor: 'border-neon-cyan/30',
+      hoverText: 'group-hover:text-neon-cyan',
+      shadow: 'shadow-[0_0_10px_rgba(0,243,255,0.2)]',
+      hex: '#00f3ff',
+      sparklineType: 'curve'
+    }));
+
+    if (!searchQuery) return bridgeSubnets;
+    
+    return bridgeSubnets.filter(s => 
         s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
         s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [subnets, searchQuery]);
+  }, [data, searchQuery]);
+
+  const stats = {
+    activeSubnets: data?.subnets?.length || 0,
+    totalStaked: data?.network?.total_staked ? `${(data.network.total_staked / 1000000).toFixed(1)}M` : '0.0M',
+    marketCap: data?.network?.market_cap ? `$${(data.network.market_cap / 1000000000).toFixed(1)}B` : '0.0 P',
+  };
 
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center py-10 px-4 lg:px-12">
@@ -258,15 +144,11 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                     <div className="flex justify-between items-start z-10 relative">
                         <div>
                             <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Active Subnets</p>
-                            <h3 className="text-white text-5xl font-black glow-text font-display">{subnets.length}</h3>
+                            <h3 className="text-white text-5xl font-black glow-text font-display">{stats.activeSubnets}</h3>
                         </div>
                         <div className="p-3 bg-neon-cyan/10 rounded-lg border border-neon-cyan/20">
                             <span className="material-symbols-outlined text-neon-cyan text-3xl">hub</span>
                         </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-2 text-sm text-slate-400 font-mono">
-                        <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_#22c55e]"></span>
-                        SYSTEM OPTIMAL
                     </div>
                 </div>
                 <div className="glass-panel p-6 rounded-xl neon-border-pink relative overflow-hidden group">
@@ -274,7 +156,7 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                     <div className="flex justify-between items-start z-10 relative">
                         <div>
                             <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Global Difficulty</p>
-                            <h3 className="text-white text-5xl font-black glow-text-pink font-display">142.5 P</h3>
+                            <h3 className="text-white text-5xl font-black glow-text-pink font-display">{stats.marketCap}</h3>
                         </div>
                         <div className="p-3 bg-neon-pink/10 rounded-lg border border-neon-pink/20">
                             <span className="material-symbols-outlined text-neon-pink text-3xl">ssid_chart</span>
@@ -282,7 +164,7 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-sm text-green-400 font-mono">
                         <span className="material-symbols-outlined text-base">trending_up</span>
-                        +5.2% INCREASE (24H)
+                        +5.2%
                     </div>
                 </div>
                 <div className="glass-panel p-6 rounded-xl border-t-2 border-t-neon-purple shadow-[inset_0_10px_20px_-10px_rgba(188,19,254,0.1)] relative overflow-hidden group">
@@ -290,7 +172,7 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                     <div className="flex justify-between items-start z-10 relative">
                         <div>
                             <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Total Locked MTN</p>
-                            <h3 className="text-white text-5xl font-black font-display" style={{ textShadow: '0 0 10px rgba(188,19,254,0.5)' }}>4.2M <span className="text-2xl text-neon-purple align-top">M</span></h3>
+                            <h3 className="text-white text-5xl font-black font-display" style={{ textShadow: '0 0 10px rgba(188,19,254,0.5)' }}>{stats.totalStaked} <span className="text-2xl text-neon-purple align-top">M</span></h3>
                         </div>
                         <div className="p-3 bg-neon-purple/10 rounded-lg border border-neon-purple/20">
                             <span className="material-symbols-outlined text-neon-purple text-3xl">lock</span>
@@ -309,13 +191,16 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                     <button className="hover:text-neon-cyan px-3 py-1.5 transition-colors">Registration</button>
                     <button className="hover:text-neon-cyan px-3 py-1.5 transition-colors">Name</button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-sm font-mono text-green-400">LIVE FEED CONNECTED</span>
-                </div>
             </div>
 
-            {filteredSubnets.length === 0 ? (
+            {isBridgeLoading && filteredSubnets.length === 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <SubnetSkeleton />
+                    <SubnetSkeleton />
+                    <SubnetSkeleton />
+                    <SubnetSkeleton />
+                </div>
+            ) : filteredSubnets.length === 0 ? (
                 <div className="glass-panel p-12 text-center rounded-xl border border-white/5 flex flex-col items-center gap-4">
                     <span className="material-symbols-outlined text-6xl text-slate-600">search_off</span>
                     <h3 className="text-xl font-bold text-white">No Subnets Found</h3>
@@ -332,7 +217,7 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                     {filteredSubnets.map((subnet, index) => (
                         <SpotlightCard 
                             key={subnet.id} 
-                            onClick={() => onSelect(subnet.id)} 
+                            onClick={() => onSelect(subnet.id, subnet.netuid)} 
                             className="p-6 flex flex-col gap-5 group cursor-pointer animate-in fade-in zoom-in duration-500"
                             style={{ animationDelay: `${index * 50}ms` }}
                         >
@@ -372,46 +257,18 @@ const SubnetsHub: React.FC<SubnetsHubProps> = ({ onSelect }) => {
                                 <div className="w-[1px] h-8 bg-white/10"></div>
                                 <div className="flex flex-col">
                                     <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Validators</span>
-                                    <span className="text-base font-bold text-white">{subnet.validators}</span>
+                                    <span className="text-base font-bold text-white whitespace-nowrap">{subnet.unique_validators} <span className="text-[10px] text-slate-500 font-normal">({subnet.validators} Nodes)</span></span>
                                 </div>
                                 <div className="w-[1px] h-8 bg-white/10"></div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Tempo</span>
+                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Epoch Tempo</span>
                                     <span className="text-base font-bold text-slate-200">{subnet.tempo}</span>
                                 </div>
                             </div>
                         </SpotlightCard>
                     ))}
-                    {isLoading && (
-                        <>
-                            <SubnetSkeleton />
-                            <SubnetSkeleton />
-                            <SubnetSkeleton />
-                            <SubnetSkeleton />
-                        </>
-                    )}
                 </div>
             )}
-
-            <div className="flex justify-center mt-8">
-                <button 
-                    onClick={handleLoadMore}
-                    disabled={isLoading}
-                    className="px-10 py-4 bg-white/5 hover:bg-neon-cyan/20 text-slate-200 hover:text-neon-cyan border border-white/10 hover:border-neon-cyan/50 rounded-full transition-all duration-300 flex items-center gap-3 font-bold uppercase tracking-widest text-sm group shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(0,243,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isLoading ? (
-                        <>
-                            <span className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
-                            Loading Data...
-                        </>
-                    ) : (
-                        <>
-                            Load More Subnets
-                            <span className="material-symbols-outlined text-lg group-hover:translate-y-0.5 transition-transform">expand_more</span>
-                        </>
-                    )}
-                </button>
-            </div>
         </div>
     </div>
   );
