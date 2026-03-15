@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDataBridge } from '../hooks/useDataBridge';
 
 interface AllBlocksViewProps {
   onBack: () => void;
@@ -7,6 +8,21 @@ interface AllBlocksViewProps {
 }
 
 const AllBlocksView: React.FC<AllBlocksViewProps> = ({ onBack, onSelectBlock, onSelectAccount }) => {
+  const { data: bridgeData } = useDataBridge();
+
+  const displayBlocks = React.useMemo(() => {
+    return bridgeData?.blocks?.map((block: any, i: number) => ({
+      height: block.height.toLocaleString(),
+      validator: block.validator || 'Unknown',
+      color: i % 2 === 0 ? 'from-purple-500 to-pink-500' : 'from-blue-500 to-cyan-500',
+      tx: block.extrinsics || 0,
+      events: block.events || 0,
+      hash: block.hash || '0x...',
+      time: block.time || 'unknown',
+      isNew: i === 0
+    })) || [];
+  }, [bridgeData]);
+
   return (
     <div className="flex justify-center py-8 px-4 lg:px-12 relative z-10 w-full min-h-screen">
       <style>{`
@@ -49,12 +65,12 @@ const AllBlocksView: React.FC<AllBlocksViewProps> = ({ onBack, onSelectBlock, on
               </div>
               <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Total Blocks</p>
               <div className="flex items-baseline gap-2">
-                <h3 className="text-3xl font-bold text-white glow-text font-mono">#2,481,920</h3>
+                <h3 className="text-3xl font-bold text-white glow-text font-mono">#{bridgeData?.network?.block?.toLocaleString() || '2,481,920'}</h3>
               </div>
               <div className="mt-2 w-full h-1 bg-white/10 rounded-full overflow-hidden">
                 <div className="h-full bg-neon-cyan w-[60%] animate-pulse"></div>
               </div>
-              <p className="text-[10px] text-slate-500 mt-2 font-mono">Latest: 2s ago</p>
+              <p className="text-[10px] text-slate-500 mt-2 font-mono">Latest: {bridgeData?.blocks?.[0]?.time || '2s ago'}</p>
             </div>
             
             <div className="glass-panel p-6 rounded-lg border-l-2 border-neon-pink relative overflow-hidden group">
@@ -80,7 +96,7 @@ const AllBlocksView: React.FC<AllBlocksViewProps> = ({ onBack, onSelectBlock, on
               </div>
               <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Last Finalized Block</p>
               <div className="flex items-baseline gap-2">
-                <h3 className="text-3xl font-bold text-white font-mono">#2,481,918</h3>
+                <h3 className="text-3xl font-bold text-white font-mono">#{((bridgeData?.network?.block || 2481920) - 2).toLocaleString()}</h3>
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <div className="h-1.5 flex-1 bg-white/10 rounded-full overflow-hidden">
@@ -99,11 +115,11 @@ const AllBlocksView: React.FC<AllBlocksViewProps> = ({ onBack, onSelectBlock, on
               <span className="material-symbols-outlined text-neon-cyan">view_module</span> All Blocks
             </h3>
             <div className="flex gap-2">
-              <button className="p-1.5 rounded bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
-                <span className="material-symbols-outlined text-sm">refresh</span>
+              <button className="p-1.5 rounded bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors" onClick={onBack}>
+                <span className="material-symbols-outlined text-sm">arrow_back</span>
               </button>
               <button className="p-1.5 rounded bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
-                <span className="material-symbols-outlined text-sm">filter_list</span>
+                <span className="material-symbols-outlined text-sm">refresh</span>
               </button>
             </div>
           </div>
@@ -121,18 +137,7 @@ const AllBlocksView: React.FC<AllBlocksViewProps> = ({ onBack, onSelectBlock, on
                   </tr>
                 </thead>
                 <tbody className="text-sm divide-y divide-white/5 font-mono">
-                  {[
-                    { height: '2,481,920', validator: 'Dao_Validator_1', color: 'from-purple-500 to-pink-500', tx: 42, events: 156, hash: '0x9f8a...3b2c', time: '4 secs ago', isNew: true },
-                    { height: '2,481,919', validator: 'TensorStats', color: 'from-blue-500 to-cyan-500', tx: 18, events: 45, hash: '0x3c2d...8e9f', time: '16 secs ago' },
-                    { height: '2,481,918', validator: 'Foundry', color: 'from-green-500 to-emerald-500', tx: 156, events: 320, hash: '0x7a8b...1c4d', time: '28 secs ago' },
-                    { height: '2,481,917', validator: 'ModernTensor', color: 'from-orange-500 to-red-500', tx: 89, events: 112, hash: '0x5e6f...2a3b', time: '40 secs ago' },
-                    { height: '2,481,916', validator: 'RoundTable', color: 'from-indigo-500 to-violet-500', tx: 23, events: 56, hash: '0x1b2c...9d0e', time: '52 secs ago' },
-                    { height: '2,481,915', validator: 'NorthTensor', color: 'from-yellow-500 to-amber-600', tx: 67, events: 98, hash: '0x8a9b...4e5f', time: '1 min ago' },
-                    { height: '2,481,914', validator: 'AlphaOmega', color: 'from-pink-500 to-rose-600', tx: 12, events: 28, hash: '0x2c3d...7a8b', time: '1 min 12s ago' },
-                    { height: '2,481,913', validator: 'NeuralNet', color: 'from-teal-500 to-cyan-400', tx: 104, events: 210, hash: '0x6e7f...1b2c', time: '1 min 24s ago' },
-                    { height: '2,481,912', validator: 'Cosmos_Validator', color: 'from-fuchsia-600 to-purple-600', tx: 5, events: 11, hash: '0x4a5b...9c0d', time: '1 min 36s ago' },
-                    { height: '2,481,911', validator: 'Anonymous', color: 'from-gray-500 to-slate-400', tx: 78, events: 144, hash: '0x0d1e...5f6a', time: '1 min 48s ago' },
-                  ].map((block, i) => (
+                  {displayBlocks.map((block: any, i: number) => (
                     <tr key={i} className="group table-row-glow transition-all duration-300 hover:bg-white/[0.02]">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span 
@@ -173,7 +178,7 @@ const AllBlocksView: React.FC<AllBlocksViewProps> = ({ onBack, onSelectBlock, on
               </table>
             </div>
             <div className="px-6 py-4 border-t border-white/5 bg-white/[0.02] flex flex-col sm:flex-row justify-between items-center gap-4">
-              <p className="text-xs text-slate-500 font-mono">Showing <span className="text-white font-bold">1</span> to <span className="text-white font-bold">10</span> of <span className="text-white font-bold">2.4M</span> blocks</p>
+              <p className="text-xs text-slate-500 font-mono">Showing <span className="text-white font-bold">1</span> to <span className="text-white font-bold">{displayBlocks.length}</span> of <span className="text-white font-bold">{(bridgeData?.network?.block || '2.4M').toLocaleString()}</span> blocks</p>
               <div className="flex items-center gap-2">
                 <button className="px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider text-slate-500 bg-white/5 cursor-not-allowed opacity-50">Prev</button>
                 <div className="flex items-center gap-1">

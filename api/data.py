@@ -185,6 +185,7 @@ class handler(BaseHTTPRequestHandler):
                 try:
                     token_contract = client.token._token
                     transfers = token_contract.events.Transfer.get_logs(fromBlock=from_block)
+                    current_iso = datetime.now().isoformat()
                     for log in transfers:
                         args = log['args']
                         addr_from = args['from'].lower()
@@ -194,6 +195,7 @@ class handler(BaseHTTPRequestHandler):
                             "method": "transfer",
                             "block": log['blockNumber'],
                             "amount": float(Web3.from_wei(args['value'], 'ether')),
+                            "timestamp": current_iso,
                             "status": "Success",
                             "from": args['from'],
                             "to": args['to'],
@@ -209,6 +211,7 @@ class handler(BaseHTTPRequestHandler):
                 try:
                     staking_contract = client.staking._staking
                     stakes = staking_contract.events.Staked.get_logs(fromBlock=from_block)
+                    current_iso = datetime.now().isoformat()
                     for log in stakes:
                         args = log['args']
                         addr = args['staker'].lower()
@@ -217,6 +220,7 @@ class handler(BaseHTTPRequestHandler):
                             "method": "add_stake",
                             "block": log['blockNumber'],
                             "amount": float(Web3.from_wei(args['amount'], 'ether')),
+                            "timestamp": current_iso,
                             "status": "Success",
                             "from": args['staker'],
                             "to": "Staking Contract",
