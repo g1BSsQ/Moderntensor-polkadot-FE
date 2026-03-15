@@ -42,54 +42,63 @@ const ToastNotification = ({ message, type, onClose }: { message: string, type: 
 );
 
 // Boot Sequence Component
-const BootSequence = ({ onComplete }: { onComplete: () => void }) => {
+const BootSequence = ({ isLoading, onComplete }: { isLoading: boolean, onComplete: () => void }) => {
   const [lines, setLines] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const messages = [
     "INITIALIZING KERNEL...",
-    "LOADING NEURAL WEIGHTS [v2.4.1]...",
-    "CONNECTING TO METAGRAPH...",
+    "LOADING NEURAL WEIGHTS [v2.4.1]... [65,536 bits]",
+    "CONNECTING TO METAGRAPH... [MTN-RPC-SYNC]",
     "SYNCING SUBNET CONSENSUS...",
-    "ESTABLISHING SECURE HANDSHAKE...",
-    "SYSTEM ONLINE."
+    "ESTABLISHING SECURE HANDSHAKE.."
   ];
 
   useEffect(() => {
-    let delay = 0;
-    messages.forEach((msg, index) => {
-      delay += Math.random() * 400 + 300;
-      setTimeout(() => {
-        setLines(prev => [...prev, msg]);
-        // Scroll to bottom
+    if (currentIndex < messages.length) {
+      const delay = Math.random() * 300 + 200;
+      const timer = setTimeout(() => {
+        setLines(prev => [...prev, messages[currentIndex]]);
+        setCurrentIndex(prev => prev + 1);
+        
         const el = document.getElementById('boot-terminal');
         if (el) el.scrollTop = el.scrollHeight;
-        
-        if (index === messages.length - 1) {
-          setTimeout(onComplete, 800);
-        }
       }, delay);
-    });
-  }, []);
+      return () => clearTimeout(timer);
+    } else if (!isLoading) {
+      // All predefined messages shown AND data is loaded
+      const timer = setTimeout(() => {
+        setLines(prev => [...prev, "SYSTEM ONLINE."]);
+        setTimeout(onComplete, 1000);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, isLoading, onComplete]);
 
   return (
-    <div className="fixed inset-0 bg-bg-dark z-[9999] flex items-center justify-center font-mono text-neon-cyan p-4">
+    <div className="fixed inset-0 bg-[#02050a] z-[9999] flex items-center justify-center font-mono text-neon-cyan p-4">
       <div className="w-full max-w-md border border-white/10 rounded-lg p-6 bg-black shadow-[0_0_50px_rgba(0,243,255,0.1)] relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-cyan to-transparent animate-scan-input"></div>
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon-cyan to-transparent animate-scan-input"></div>
         <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
-            <span className="text-xs text-slate-500">MODERNTENSOR_BIOS_UEFI</span>
-            <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <span className="text-[10px] text-slate-500 tracking-[0.2em]">MODERNTENSOR_BIOS_UEFI_v1.0.4</span>
+            <div className="flex gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-red-500/20 border border-red-500/50"></div>
+                <div className="w-2 h-2 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+                <div className="w-2 h-2 rounded-full bg-green-500/20 border border-green-500/50"></div>
             </div>
         </div>
-        <div id="boot-terminal" className="flex flex-col gap-2 h-64 overflow-y-auto custom-scrollbar">
+        <div id="boot-terminal" className="flex flex-col gap-2 h-64 overflow-y-auto custom-scrollbar pr-2">
             {lines.map((line, i) => (
-            <div key={i} className="text-sm opacity-0 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
-                <span className="text-slate-500 mr-2">[{new Date().toLocaleTimeString()}]</span>
-                <span className={i === lines.length - 1 ? "text-white font-bold" : "text-neon-cyan"}>{`> ${line}`}</span>
+            <div key={i} className="text-xs animate-fade-in-up flex gap-2">
+                <span className="text-slate-600 shrink-0">[{new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}]</span>
+                <span className={line === "SYSTEM ONLINE." ? "text-white font-bold glow-text-cyan" : "text-neon-cyan"}>{`> ${line}`}</span>
             </div>
             ))}
-            <div className="h-4 w-2 bg-neon-cyan animate-pulse mt-1"></div>
+            {currentIndex < messages.length || isLoading ? (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="h-4 w-2 bg-neon-cyan animate-pulse"></span>
+                <span className="text-[10px] text-slate-600 animate-pulse italic">SYNCING_METAGRAPH...</span>
+              </div>
+            ) : null}
         </div>
       </div>
     </div>
@@ -326,7 +335,7 @@ const App: React.FC = () => {
   return (
     <>
     {isBooting ? (
-      <BootSequence onComplete={() => setIsBooting(false)} />
+      <BootSequence isLoading={!data} onComplete={() => setIsBooting(false)} />
     ) : (
       <div className="bg-bg-dark min-h-screen text-slate-300 font-body selection:bg-neon-cyan selection:text-black flex flex-col overflow-x-hidden animate-fade-in-up">
         {/* Toast Container */}
