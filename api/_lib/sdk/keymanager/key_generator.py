@@ -6,14 +6,18 @@ Uses native Python cryptography matching ModernTensor implementation.
 """
 
 from typing import Dict
-from bip_utils import (
-    Bip39MnemonicGenerator,
-    Bip39SeedGenerator,
-    Bip39WordsNum,
-    Bip44,
-    Bip44Coins,
-    Bip44Changes,
-)
+try:
+    from bip_utils import (
+        Bip39MnemonicGenerator,
+        Bip39SeedGenerator,
+        Bip39WordsNum,
+        Bip44,
+        Bip44Coins,
+        Bip44Changes,
+    )
+    HAS_BIP_UTILS = True
+except ImportError:
+    HAS_BIP_UTILS = False
 from ecdsa import SigningKey, SECP256k1
 import secrets
 
@@ -90,6 +94,8 @@ class KeyGenerator:
         Returns:
             Mnemonic phrase as string
         """
+        if not HAS_BIP_UTILS:
+            raise ImportError("bip_utils is required for generate_mnemonic. Install with 'pip install bip-utils'")
         if words == 12:
             word_num = Bip39WordsNum.WORDS_NUM_12
         elif words == 24:
@@ -110,6 +116,8 @@ class KeyGenerator:
         Returns:
             True if valid, False otherwise
         """
+        if not HAS_BIP_UTILS:
+            return False
         try:
             from bip_utils import Bip39MnemonicValidator
 
@@ -128,6 +136,8 @@ class KeyGenerator:
         Returns:
             Dictionary with address, public_key, and private_key
         """
+        if not HAS_BIP_UTILS:
+            raise ImportError("bip_utils is required for derive_hotkey. Install with 'pip install bip-utils'")
         # Generate seed from mnemonic
         seed_bytes = Bip39SeedGenerator(mnemonic).Generate()
 
